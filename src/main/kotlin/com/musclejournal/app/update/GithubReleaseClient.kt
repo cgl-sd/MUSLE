@@ -2,6 +2,7 @@ package com.musclejournal.app.update
 
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
@@ -51,10 +52,24 @@ internal class GithubReleaseClient : ReleaseSource {
         get(key) as? String ?: error("发布 $key 字段格式无效")
 
     private suspend fun request(url: String, limit: Long, noReleaseOn404: Boolean): String? =
-        withContext(Dispatchers.IO) {
+        withContext(Dispatchers.IO) request@{
+            var lastError: IOException? = null
+            repeat(2) { attempt ->
+                currentCoroutineContext().ensureActive()
+                try {
+                    return@request requestOnce(url, limit, noReleaseOn404)
+                } catch (error: IOException) {
+                    lastError = error
+                    if (attempt == 0) delay(500)
+                }
+            }
+            throw lastError ?: IOException("GitHub 请求失败")
+        }
+
+    private suspend fun requestOnce(url: String, limit: Long, noReleaseOn404: Boolean): String? {
             val connection = (URL(url).openConnection() as HttpURLConnection).apply {
-                connectTimeout = 12_000
-                readTimeout = 12_000
+                connectTimeout = 15_000
+                readTimeout = 15_000
                 instanceFollowRedirects = true
                 useCaches = false
                 requestMethod = "GET"
@@ -67,9 +82,9 @@ internal class GithubReleaseClient : ReleaseSource {
                 setRequestProperty("Cache-Control", "no-cache")
                 setRequestProperty("Accept-Encoding", "identity")
             }
-            try {
+            return try {
                 val code = connection.responseCode
-                if (code == HttpURLConnection.HTTP_NOT_FOUND && noReleaseOn404) return@withContext null
+                if (code == HttpURLConnection.HTTP_NOT_FOUND && noReleaseOn404) return null
                 if (code !in 200..299) throw IOException("GitHub 请求失败（HTTP $code）")
                 require(connection.url.protocol == "https") { "GitHub 请求不是 HTTPS" }
                 val declaredLength = connection.contentLengthLong

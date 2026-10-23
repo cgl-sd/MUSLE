@@ -8,7 +8,7 @@
 - 更新下载使用系统 DownloadManager，保存到应用外部私有下载目录；状态写入 no-backup 目录并支持进程重建恢复。下载完成后校验大小、SHA-256、包名、纯 `major.minor.patch` 版本名、递增 versionCode 和与当前安装完全一致的签名，再通过 FileProvider 交给系统安装器。未实现静默安装、安装确认绕过或数据清理路径。
 - 版本升级为 `0.3.0`（versionCode 3），保留现有安装使用的本机证书签名以支持覆盖升级。新增 `src/scripts/build-release.sh`，统一执行离线 Release、zipalign、apksigner、签名/对齐核验和 SHA-256 生成，不提交私钥或密码。
 - 新增6项UpdatePolicyTest，覆盖完整版本比较、正式资产、URL 固定、校验文件、APK 身份/签名和安装状态边界；全套114项单元测试0失败。设备端25项检查通过，包含 DownloadManager 记录隔离、恢复匹配和取消范围。debug、androidTest APK 与 Release 构建通过，Lint 0错误/16个既有警告。
-- 通用 Release APK：`tmp/release/MuscleJournal-0.3.0.apk`，SHA-256 `a365fa8964591ac10c3a8bb8ccd947f088d1bebfbd0640bd400ad777a6f7053f`；签名核验 v2/v3，包名 `com.musclejournal.app`、versionCode 3、versionName 0.3.0，包含 INTERNET 与 REQUEST_INSTALL_PACKAGES。覆盖安装成功，首次安装时间与本地数据保留。
+- Release 请求对只读 GitHub 元数据/校验文件做一次保守重试，避免移动网络偶发超时导致整个更新失败。最终 Release APK：`tmp/release/MuscleJournal-0.3.0.apk`，SHA-256 `afa8ec1fe4dda8b64904c14cb29f8f4c6f3b29533a52b35f66189ce827415c11`；签名核验 v2/v3，包名 `com.musclejournal.app`、versionCode 3、versionName 0.3.0，包含 INTERNET 与 REQUEST_INSTALL_PACKAGES。覆盖安装成功，首次安装时间与本地数据保留；正式版设置页在线检查结果为“已是最新版本 · 当前 0.3.0”，设备端真实读取 Release 元数据与 SHA-256 通过。
 - GitHub 发布地址：[cgl-sd/MUSLE](https://github.com/cgl-sd/MUSLE) · [v0.3.0](https://github.com/cgl-sd/MUSLE/releases/tag/v0.3.0)。README 已补充下载、检查更新、数据隐私、构建与签名说明；开发文档§18.64记录实现和验收。API26未复验。
 
 ## 2026-10-24 — 首页工具按钮独立化与布局安全区
