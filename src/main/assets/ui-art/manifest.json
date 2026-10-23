@@ -1,0 +1,32 @@
+{
+  "created": "2026-10-17",
+  "generator": "OpenAI built-in image_gen",
+  "references": [
+    "docs/ui-designs/all-pages-20261017/course-scheduling.png",
+    "docs/ui-designs/all-pages-20261017/workout-variants.png",
+    "docs/ui-designs/all-pages-20261017/baselines-memories.png",
+    "src/main/assets/body-art/dumbbell-bench.png"
+  ],
+  "assets": {
+    "seated-row.png": "Generated seated cable row illustration",
+    "lateral-raise.png": "Generated dumbbell lateral raise illustration",
+    "pushdown.png": "Generated cable triceps pushdown illustration",
+    "pushup.png": "Generated push-up illustration",
+    "side-plank.png": "Generated side plank in grey sports shirt, red oblique location overlay",
+    "medal.png": "Generated silver dumbbell medal with red ribbon, transparent background",
+    "avatar.png": "Generated neutral grayscale head and shoulders portrait",
+    "memory-hero.png": "Generated commemorative portrait in grey sports shirt with red ring and silver medal"
+  },
+  "boundary": "Illustrative UI artwork only. Red regions are visual identifiers, not validated muscle mappings or user load estimates. No source screenshot was cropped into a shipped asset.",
+  "sha256": {
+    "pushup.png": "020b2caae38d940498271adaa900939b2603fe7a31465e6ac371cfa11df25706",
+    "lateral-raise.png": "ef70397034303d6c9bb92b076e048127bf1810c7a0154b901bb92c291553d6bf",
+    "side-plank.png": "033ad7f65faa7daea62f795d274dc1ce505dd119ef156bbc68d33f930d5bca53",
+    "seated-row.png": "ce7a552eca9ad3acb0990e5fdc9a6c5ef48134fb59f320a204dcdb770d8b9b3d",
+    "avatar.png": "65a75d5128ae84737e211f26be41f5373dab9a18d00b72faac926f848025dfa5",
+    "medal.png": "38aa4b421a961034a59484e98a43cb30431318bc4b81b7fb45cb9f02e4580d10",
+    "pushdown.png": "357ef9ec92dfaeb8178ee955aafdd05b01a2bfaab2668b0dcef684fb44600daf",
+    "memory-hero.png": "651c9c7e90a35fc895818504cbaba4215f2f16f4641ac22975397ca53fdbdc36"
+  },
+  "visual_variations": "Side plank and commemorative portrait wear grey sports shirts rather than the bare anatomical figure in the visual references."
+}
