@@ -9,6 +9,7 @@
 
 ## 下载
 
+- [GitHub 源码仓库](https://github.com/cgl-sd/MUSLE)
 - [最新正式版](https://github.com/cgl-sd/MUSLE/releases/latest)
 - [0.3.0 APK](https://github.com/cgl-sd/MUSLE/releases/download/v0.3.0/MuscleJournal-0.3.0.apk)
 - [0.3.0 SHA-256](https://github.com/cgl-sd/MUSLE/releases/download/v0.3.0/MuscleJournal-0.3.0.apk.sha256)
@@ -139,7 +140,7 @@ AGENTS.md                         持续开发约束
 CHANGELOG.md                      按日期记录变更和验证结果
 ```
 
-更多实现、验收记录和资产来源见 [docs/DEVELOPMENT_PLAN.md](docs/DEVELOPMENT_PLAN.md)。
+公开仓库不包含大型设计资料。完整的本机开发计划、验收记录和资产来源位于 `docs/DEVELOPMENT_PLAN.md`，该目录按项目规则保留在本地。
 
 ## 已知限制
 
