@@ -24,7 +24,6 @@ import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.*
 import com.musclejournal.app.domain.*
-import com.musclejournal.app.rendering.BodyView
 import java.time.*
 import java.time.format.DateTimeFormatter
 
@@ -95,7 +94,7 @@ internal enum class HistoryPeriod(val label:String) {
     val actions=ExerciseProgress.index(j)
     j.sessions.filter {s->actions.forSession(s).any {it.exerciseId==e.id}}.sortedWith(compareByDescending<Session>{it.date()}.thenByDescending {it.startedAt}).forEach {s->TrainingCard{TrainingCardRow(s.date().toString(),e,"已完成")}}
 }
-@Composable internal fun CoursesScreen(j:Journal,busy:Boolean,start:(Course)->Unit,edit:(Course?)->Unit,copy:(Course)->Unit,archive:(Course)->Unit,schedule:(Course)->Unit,startOccurrence:(Occurrence)->Unit,status:(Occurrence,OccurrenceStatus)->Unit,editOccurrence:(Occurrence)->Unit,arrange:(LocalDate)->Unit,focusDate:String?=null,onFocusConsumed:()->Unit={}){
+@Composable internal fun CoursesScreen(j:Journal,busy:Boolean,start:(Course)->Unit,edit:(Course?)->Unit,copy:(Course)->Unit,archive:(Course)->Unit,schedule:(Course)->Unit,status:(Occurrence,OccurrenceStatus)->Unit,editOccurrence:(Occurrence)->Unit,arrange:(LocalDate)->Unit,focusDate:String?=null,onFocusConsumed:()->Unit={}){
     var tab by rememberSaveable {mutableStateOf("训练安排")}
     var day by rememberSaveable(stateSaver=LocalDateSaver){mutableStateOf(LocalDate.now())}
     var expanded by rememberSaveable {mutableStateOf<String?>(null)}
@@ -196,13 +195,4 @@ internal enum class HistoryPeriod(val label:String) {
         }
     }
 }
-@Composable internal fun ScheduleEditor(j:Journal,courseId:String?,busy:Boolean,close:()->Unit,save:(String?,LocalDate,Set<Int>,LocalDate)->Unit){var selected by remember {mutableStateOf(courseId)};var date by remember {mutableStateOf(LocalDate.now())};var end by remember {mutableStateOf(date.plusWeeks(2))};var weekly by remember {mutableStateOf(false)};var days by remember {mutableStateOf(setOf(date.dayOfWeek.value))};var choosing by remember {mutableStateOf(false)}
-    Editor(if(courseId==null)"安排休息" else "安排课程",busy,close,{save(selected,date,if(weekly)days else emptySet(),if(weekly)end else date)},"保存安排"){
-        if(courseId!=null){DesignRow(j.courses.firstOrNull {it.id==selected}?.name?:"选择课程",icon=Icons.Outlined.FitnessCenter,click={choosing=!choosing});if(choosing)j.courses.filter {!it.archived}.forEach {c->DesignRow(c.name,click={selected=c.id;choosing=false})}}
-        DateField("开始日期",date){date=it};Toggle("每周重复",weekly){weekly=it};if(weekly){Weekdays(days){days=it};DateField("结束日期",end){end=it}}
-        val count=if(weekly && end>=date)generateSequence(date){it.plusDays(1)}.takeWhile {it<=end && it<=date.plusYears(1)}.count {it.dayOfWeek.value in days} else 1
-        DesignRow("安排日期",trailing={Text("$count 个日期",color=Muted)});val dates=if(weekly&&end>=date)generateSequence(date){it.plusDays(1)}.takeWhile {it<=end&&it<=date.plusYears(1)}.filter {it.dayOfWeek.value in days}.toSet()else emptySet();CalendarGrid(date,dates){date=it}
-    }
-}
 @Composable internal fun DateField(label:String,value:LocalDate,change:(LocalDate)->Unit){var show by remember {mutableStateOf(false)};val dirty=LocalFormDirty.current;Column{Text(label,color=Muted,fontSize=14.sp);Surface(color=Panel,shape=RoundedCornerShape(14.dp),border=BorderStroke(1.dp,Outline)){Box(Modifier.padding(horizontal=12.dp)){DesignRow(value.toString(),icon=Icons.Outlined.CalendarMonth,click={show=!show})}};if(show)CalendarGrid(value){dirty();change(it);show=false}}}
-@Composable internal fun OccurrenceEditor(j:Journal,o:Occurrence,busy:Boolean,close:()->Unit,save:(Occurrence)->Unit){var date by remember {mutableStateOf(LocalDate.parse(o.date))};var course by remember {mutableStateOf(o.override?:j.courses.firstOrNull {it.id==o.courseId})};var query by rememberSaveable {mutableStateOf("")};Editor("修改本次安排",busy,close,{save(o.copy(date=date.toString(),override=course,modifiedAt=System.currentTimeMillis()))},"保存本次"){DateField("训练日期",date){date=it};Text("选择课程");Input("搜索课程",query,{query=it},trackChange=false);j.courses.filter {!it.archived && it.name.contains(query)}.forEach {c->DesignRow(c.name,click={course=c},trailing={if(c.id==course?.id)Icon(Icons.Outlined.CheckCircle,null,tint=Accent)})};course?.exercises?.forEach {ce->DesignRow(j.exercise(ce.exerciseId).name,leading={ExerciseThumbnail(j.exercise(ce.exerciseId),Modifier.size(70.dp,54.dp))},trailing={TapIcon(Icons.Outlined.RemoveCircleOutline,"移除此动作"){course=course?.copy(exercises=course!!.exercises.filterNot {it.exerciseId==ce.exerciseId})}})}}}

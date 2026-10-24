@@ -151,10 +151,6 @@ data class MuscleReference(val weeklyMean:Double?,val ratio:Double?,val sessions
 data class Baseline(val status: String, val matchingSets: Int, val typicalLoad: Double?, val ratio: Double?, val explanation: String)
 object Metrics {
     const val VERSION = "participation-v1/history-v1"
-    fun setsInRange(j: Journal, from: LocalDate, to: LocalDate): List<SetEntry> {
-        val ids = j.sessions.filter { it.date() >= from && it.date() <= to }.map { it.id }.toSet()
-        return j.sets.filter { it.sessionId in ids }
-    }
     fun muscle(j: Journal, muscle: MuscleId, rows: List<SetEntry>, side:String="双侧"): MuscleTotals {
         val working = rows.filter { !it.warmup && (side=="双侧" || it.side=="双侧" || it.side==side) }
         return MuscleTotals(working.count { muscle in j.exercise(it.exerciseId).primary }, working.count { muscle in j.exercise(it.exerciseId).secondary }, working.filter { muscle in j.exercise(it.exerciseId).primary + j.exercise(it.exerciseId).secondary }.maxOfOrNull { it.completedAt })

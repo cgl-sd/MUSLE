@@ -196,7 +196,10 @@ class JournalAcceptanceInstrumentation:Instrumentation(){
                 check(android.database.sqlite.SQLiteDatabase.openDatabase(legacyFile.absolutePath,null,android.database.sqlite.SQLiteDatabase.OPEN_READONLY).use { it.version==4 })
                 upgraded.close()
             }
-            verify("commemoration exports actual PNG without profile fields"){val memory=Achievement("a","测试目标",at,"g",1);val bytes=java.io.ByteArrayOutputStream();com.musclejournal.app.data.Commemoration.write(memory,null,bytes);val bitmap=android.graphics.BitmapFactory.decodeByteArray(bytes.toByteArray(),0,bytes.size());check(bitmap.width==1080 && bitmap.height==1740);bitmap.recycle()}
+            verify("retired commemoration artwork is absent while profile artwork remains"){
+                val art=targetContext.assets.list("ui-art").orEmpty().toSet()
+                check("memory-hero.png" !in art && "avatar.png" in art)
+            }
             verify("aggregate payload roundtrip preserves courses schedules feedback goals and memories"){
                 val course=Course(id="course",name="课程",exercises=listOf(CourseExercise("plank",listOf(TargetSet(seconds=45,restSeconds=60)))))
                 val occurrence=Occurrence(id="occ",courseId=course.id,date="2026-10-18",seriesId="series",override=course)

@@ -17,9 +17,8 @@ class BodyIllustrationView(context:Context,private val selected:(MuscleId,String
     private val paint=Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG)
     private val destination=RectF(0f,0f,1024f,1536f)
     private val trainingFilter=PorterDuffColorFilter(Color.rgb(224,86,89),PorterDuff.Mode.MULTIPLY)
-    private val loadFilter=PorterDuffColorFilter(Color.rgb(255,65,69),PorterDuff.Mode.MULTIPLY)
     private var bitmap:Bitmap?=null;private var view=BodyView.FRONT
-    private var areas=emptyList<Area>();private var state=MuscleRenderState(MuscleDisplayMode.SESSION_LOAD)
+    private var areas=emptyList<Area>();private var state=MuscleRenderState()
     private var factor=1f;private var offsetX=0f;private var offsetY=0f
     private var downX=0f;private var downY=0f;private var moved=false
     private val touchSlop=ViewConfiguration.get(context).scaledTouchSlop
@@ -45,18 +44,11 @@ class BodyIllustrationView(context:Context,private val selected:(MuscleId,String
         canvas.drawBitmap(image,null,destination,paint)
         areas.forEach {area->
             val visual=state.muscles[area.muscle]
-            val alpha=when(state.mode){
-                MuscleDisplayMode.TRAINING_STATE -> {
-                    val score=if(area.side=="左侧")visual?.normalizedLeftScore else visual?.normalizedRightScore
-                    score?.takeIf {it>0f}?.let {(45+195*it).roundToInt().coerceAtMost(240)}?:0
-                }
-                MuscleDisplayMode.SESSION_LOAD -> {val count=if(area.side=="左侧")visual?.completedLeftSets?:0 else visual?.completedRightSets?:0;when {count<=0->0;count<=2->140;count<=5->195;else->240}}
-                MuscleDisplayMode.PERSONAL_REFERENCE -> {val ratio=if(area.side=="左侧")visual?.personalLeftRatio else visual?.personalRightRatio;when {ratio==null||ratio<0.5f->0;ratio<1f->140;ratio<1.5f->195;else->240}}
-                MuscleDisplayMode.RECOVERY_ESTIMATE -> {val score=visual?.normalizedScore;when {score==null->0;score<0.25f->0;score<0.5f->140;score<0.75f->195;else->240}}
-            }
+            val score=if(area.side=="左侧")visual?.normalizedLeftScore else visual?.normalizedRightScore
+            val alpha=score?.takeIf {it>0f}?.let {(45+195*it).roundToInt().coerceAtMost(240)}?:0
             val selectedArea=state.selectedMuscle==area.muscle && (state.selectedSide=="双侧" || state.selectedSide==area.side)
-            if(alpha>0){val clip=canvas.save();canvas.clipPath(area.path);paint.colorFilter=if(state.mode==MuscleDisplayMode.TRAINING_STATE)trainingFilter else loadFilter;paint.alpha=alpha;canvas.drawBitmap(image,null,destination,paint);canvas.restoreToCount(clip)}
-            if(selectedArea){paint.colorFilter=null;paint.alpha=255;paint.color=if(state.mode==MuscleDisplayMode.TRAINING_STATE)Color.rgb(255,75,79)else Color.WHITE;paint.style=Paint.Style.STROKE;paint.strokeWidth=2f/factor;canvas.drawPath(area.path,paint);paint.style=Paint.Style.FILL}
+            if(alpha>0){val clip=canvas.save();canvas.clipPath(area.path);paint.colorFilter=trainingFilter;paint.alpha=alpha;canvas.drawBitmap(image,null,destination,paint);canvas.restoreToCount(clip)}
+            if(selectedArea){paint.colorFilter=null;paint.alpha=255;paint.color=Color.rgb(255,75,79);paint.style=Paint.Style.STROKE;paint.strokeWidth=2f/factor;canvas.drawPath(area.path,paint);paint.style=Paint.Style.FILL}
         }
         paint.colorFilter=null;paint.alpha=255;canvas.restoreToCount(saved)
     }

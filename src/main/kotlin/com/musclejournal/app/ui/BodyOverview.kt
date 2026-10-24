@@ -71,7 +71,7 @@ import java.util.Locale
         }else{
             Box(Modifier.fillMaxWidth().height(heroHeight+68.dp)){
                 val imageModifier=Modifier.fillMaxSize().padding(top=52.dp,bottom=52.dp)
-                key(generation){AndroidView(factory={ctx->BodyIllustrationView(ctx,onPick,{error=it},assetFailure)},onRelease={it.release()},update={it.update(currentView,MuscleRenderState(MuscleDisplayMode.TRAINING_STATE,visual,selected,selectedSide))},modifier=imageModifier)}
+                key(generation){AndroidView(factory={ctx->BodyIllustrationView(ctx,onPick,{error=it},assetFailure)},onRelease={it.release()},update={it.update(currentView,MuscleRenderState(visual,selected,selectedSide))},modifier=imageModifier)}
                 if(annotations)BodyAnnotationLayer(currentView,selected,onPick,imageModifier,rightInset=64.dp)
                 HomeHeading(today)
                 HomeTrainingStatus(trainingScore,Modifier.align(Alignment.TopEnd))

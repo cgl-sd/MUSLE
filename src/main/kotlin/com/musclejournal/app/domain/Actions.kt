@@ -33,7 +33,6 @@ object Actions {
         return j.copy(sessions=j.sessions.map { if(it.id==active.id)it.copy(endedAt=now,status=if(early)SessionStatus.EARLY else SessionStatus.COMPLETED,pauseStarted=null,pausedMs=paused,modifiedAt=now) else it },restUntil=null)
     }
     fun deleteSession(j:Journal,id:String,now:Long=System.currentTimeMillis()):Journal {
-        val ids=j.sets.filter { it.sessionId==id }.map { it.id }.toSet()+id
         val linked=j.sessions.firstOrNull {it.id==id}?.linkedOccurrenceIds().orEmpty().toSet()
         val remaining=j.sessions.filterNot {it.id==id}
         val stillLinked=remaining.flatMap {it.linkedOccurrenceIds()}.toSet()

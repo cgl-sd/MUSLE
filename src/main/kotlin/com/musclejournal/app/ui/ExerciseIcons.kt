@@ -26,12 +26,6 @@ import com.musclejournal.app.domain.Exercise
         withTransform({translate((size.width-100*scale)/2,(size.height-76*scale)/2);scale(scale,scale,Offset.Zero)}){MovementGlyph(this).draw(exercise)}
     }
 }
-@Composable internal fun RestLineIcon(modifier:Modifier){
-    Canvas(modifier.background(Panel,RoundedCornerShape(12.dp)).padding(12.dp)){
-        val scale=minOf(size.width/100f,size.height/76f)
-        withTransform({translate((size.width-100*scale)/2,(size.height-76*scale)/2);scale(scale,scale,Offset.Zero)}){val g=MovementGlyph(this);g.line(18f,44f,82f,44f);g.line(18f,33f,18f,62f);g.line(82f,44f,82f,62f);g.circle(31f,36f,6f);g.poly(41f,39f,72f,39f,78f,44f)}
-    }
-}
 private class MovementGlyph(private val scope:DrawScope){
     private val white=Color(0xFFE0E0E0);private val gray=Color(0xFF808080)
     fun line(x:Float,y:Float,a:Float,b:Float,color:Color=white)=with(scope){drawLine(color,Offset(x,y),Offset(a,b),2.2f,StrokeCap.Round)}

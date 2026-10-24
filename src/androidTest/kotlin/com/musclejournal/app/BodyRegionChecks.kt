@@ -55,14 +55,15 @@ fun runBodyRegionChecks(runner:Instrumentation){
                 val body=BodyIllustrationView(runner.targetContext,{m,s->hit=m to s},{error(it)})
                 try {
                     for((width,height) in listOf(512 to 768,720 to 1080,900 to 900)){
-                        body.layout(0,0,width,height);body.update(view,MuscleRenderState(MuscleDisplayMode.SESSION_LOAD))
+                        body.layout(0,0,width,height);body.update(view,MuscleRenderState())
                         val reference=Bitmap.createBitmap(width,height,Bitmap.Config.ARGB_8888);body.draw(Canvas(reference))
-                        body.update(view,MuscleRenderState(MuscleDisplayMode.TRAINING_STATE))
+                        val neutral=outlines.map {it.muscle}.distinct().associateWith {MuscleVisualState(normalizedScore=0f)}
+                        body.update(view,MuscleRenderState(neutral))
                         val empty=Bitmap.createBitmap(width,height,Bitmap.Config.ARGB_8888);body.draw(Canvas(empty))
                         verify("$view $width/$height no training leaves original pixels unchanged"){check(empty.sameAs(reference))}
                         empty.recycle()
                         val trained=outlines.map {it.muscle}.distinct().associateWith {MuscleVisualState(normalizedScore=.6f)}
-                        body.update(view,MuscleRenderState(MuscleDisplayMode.TRAINING_STATE,trained))
+                        body.update(view,MuscleRenderState(trained))
                         val bitmap=Bitmap.createBitmap(width,height,Bitmap.Config.ARGB_8888);body.draw(Canvas(bitmap))
                         val scale=minOf(width/1024f,height/1536f);val ox=(width-1024*scale)/2;val oy=(height-1536*scale)/2
                         fun touch(x:Int,y:Int){hit=null;val px=ox+x*scale;val py=oy+y*scale;val now=android.os.SystemClock.uptimeMillis();val a=MotionEvent.obtain(now,now,MotionEvent.ACTION_DOWN,px,py,0);val b=MotionEvent.obtain(now,now+1,MotionEvent.ACTION_UP,px,py,0);body.onTouchEvent(a);body.onTouchEvent(b);a.recycle();b.recycle()}
@@ -77,8 +78,7 @@ fun runBodyRegionChecks(runner:Instrumentation){
                     body.layout(0,0,1024,1536)
                     val (sampleMuscle,sx,sy)=landmarks.first()
                     fun render(score:Float,selected:MuscleId?=null):Bitmap {
-                        body.update(view,MuscleRenderState(MuscleDisplayMode.TRAINING_STATE,
-                            mapOf(sampleMuscle to MuscleVisualState(normalizedScore=score,normalizedLeftScore=0f)),selected))
+                        body.update(view,MuscleRenderState(mapOf(sampleMuscle to MuscleVisualState(normalizedScore=score,normalizedLeftScore=0f)),selected))
                         return Bitmap.createBitmap(1024,1536,Bitmap.Config.ARGB_8888).also {body.draw(Canvas(it))}
                     }
                     val base=render(0f);val low=render(.2f);val high=render(.8f);val selected=render(.8f,sampleMuscle)
@@ -95,7 +95,7 @@ fun runBodyRegionChecks(runner:Instrumentation){
                     }
                     listOf(base,low,high,selected).forEach {it.recycle()}
                     for(muscle in outlines.map {it.muscle}.distinct()){
-                        body.update(view,MuscleRenderState(MuscleDisplayMode.TRAINING_STATE,mapOf(muscle to MuscleVisualState(normalizedScore=1f)),muscle,"双侧"))
+                        body.update(view,MuscleRenderState(mapOf(muscle to MuscleVisualState(normalizedScore=1f)),muscle,"双侧"))
                         val bitmap=Bitmap.createBitmap(1024,1536,Bitmap.Config.ARGB_8888);body.draw(Canvas(bitmap));File(folder,"${view.name.lowercase()}-${muscle.stableId}.png").outputStream().use {bitmap.compress(Bitmap.CompressFormat.PNG,100,it)};bitmap.recycle()
                     }
                 }finally{body.release()}

@@ -7,13 +7,10 @@
     "docs/ui-designs/all-pages-20261017/baselines-memories.png"
   ],
   "assets": {
-    "avatar.png": "Generated neutral grayscale head and shoulders portrait",
-    "memory-hero.png": "Generated commemorative portrait in grey sports shirt with red ring and silver medal"
+    "avatar.png": "Generated neutral grayscale head and shoulders portrait"
   },
   "boundary": "Illustrative UI artwork only. Red regions are visual identifiers, not validated muscle mappings or user load estimates. No source screenshot was cropped into a shipped asset.",
   "sha256": {
-    "avatar.png": "65a75d5128ae84737e211f26be41f5373dab9a18d00b72faac926f848025dfa5",
-    "memory-hero.png": "651c9c7e90a35fc895818504cbaba4215f2f16f4641ac22975397ca53fdbdc36"
-  },
-  "visual_variations": "Side plank and commemorative portrait wear grey sports shirts rather than the bare anatomical figure in the visual references."
+    "avatar.png": "65a75d5128ae84737e211f26be41f5373dab9a18d00b72faac926f848025dfa5"
+  }
 }

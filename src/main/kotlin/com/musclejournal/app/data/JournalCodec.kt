@@ -4,7 +4,7 @@ import com.musclejournal.app.domain.*
 import org.json.JSONArray
 import org.json.JSONObject
 
-/** Versioned, explicit codec. Imported data is validated before a database transaction. */
+/** Versioned, explicit codec. Stored data is validated before it is published. */
 object JournalCodec {
     /** Database payloads are tagged with the aggregate schema; older ones are migrated on read. */
     private val SCHEMA = JOURNAL_SCHEMA
