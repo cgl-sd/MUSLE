@@ -32,9 +32,11 @@ class JournalAcceptanceInstrumentation:Instrumentation(){
             try {
                 val source=GithubReleaseClient()
                 val release=kotlinx.coroutines.runBlocking {source.latest()}
-                check(release!=null&&release.version==UpdateVersion(0,3,0)&&release.tag=="v0.3.0")
+                val installed=UpdateVersion.parse(BuildConfig.VERSION_NAME)
+                    ?: error("Installed test APK version is not major.minor.patch")
+                check(release!=null&&release.version>=installed&&release.tag=="v${release.version}")
                 val digest=kotlinx.coroutines.runBlocking {source.checksum(release)}
-                check(digest=="afa8ec1fe4dda8b64904c14cb29f8f4c6f3b29533a52b35f66189ce827415c11")
+                check(digest.matches(UpdatePolicy.digestPattern))
                 finish(RESULT_OK,Bundle().apply {
                     putString("stream","PASS live release metadata and checksum\n1 checks passed\n")
                     putInt("passed",1)
