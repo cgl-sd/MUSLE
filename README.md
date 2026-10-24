@@ -145,8 +145,6 @@ src/androidTest/                  可提交的设备侧测试
 tmp/                              构建、测试、日志与验证证据（忽略）
 docs/                             开发文档与设计资料（忽略）
 README.md                         项目介绍、下载、构建与更新说明
-AGENTS.md                         持续开发约束
-CHANGELOG.md                      按日期记录变更和验证结果
 ```
 
 公开仓库不包含大型设计资料。完整的本机开发计划、验收记录和资产来源位于 `docs/DEVELOPMENT_PLAN.md`，该目录按项目规则保留在本地。
