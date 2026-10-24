@@ -22,7 +22,7 @@
 
 [![养肌宝界面预览：身体探索、动作记录与课程安排](artwork/readme/screens.png)](artwork/readme/screens.png)
 
-> Android 开发版界面；安排内容来自隔离测试数据。
+> Android 开发版界面。
 
 ## 下载与安装
 
