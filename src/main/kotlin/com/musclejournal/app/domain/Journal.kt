@@ -6,8 +6,13 @@ import java.util.UUID
 fun newId() = UUID.randomUUID().toString()
 enum class RecordType { LOAD_REPS, REPS, DURATION }
 enum class SessionStatus { ACTIVE, COMPLETED, EARLY }
-enum class OccurrenceStatus { PLANNED, SKIPPED, REST, CANCELLED }
+enum class OccurrenceStatus { PLANNED, SKIPPED, REST, CANCELLED, COMPLETED }
 enum class EffortScale { RIR, RPE }
+
+const val MAX_SESSION_TITLE_LENGTH = 120
+const val MAX_SESSION_NOTE_LENGTH = 300
+const val MAX_COURSE_NAME_LENGTH = 80
+const val MAX_COURSE_NOTES_LENGTH = 2_000
 
 data class EvidenceRecord(val source:String,val studyType:String,val population:String,val applicability:String,val limitations:String,val reviewedOn:String="2026-10-17",val version:Int=1)
 
@@ -18,6 +23,7 @@ data class Exercise(
     val evidence: String = "https://openstax.org/books/anatomy-and-physiology-2e/pages/11-5-muscles-of-the-pectoral-girdle-and-upper-limbs",
     val conditions: String = "标准动作、可控制幅度；实际执行方式会影响参与。", val reviewed: Boolean = true,
     val mappingVersion: Int = 1,
+    val requiresSide: Boolean = false,
 ) {
     fun evidenceRecord():EvidenceRecord = when {
         !reviewed -> EvidenceRecord(evidence,"用户指定，未审查","未知",conditions,"不进入个体刺激评分或已审核基线")
@@ -39,10 +45,12 @@ data class Session(
     val pauseStarted: Long? = null, val pausedMs: Long = 0, val note: String = "", val modifiedAt: Long = System.currentTimeMillis(),
     val completedActions: List<CompletedAction>? = null,
     val recordedDate:String? = null,
+    val completedOccurrenceIds:List<String> = emptyList(),
 ) {
     init { require(title.isNotBlank() && startedAt > 0); ZoneId.of(zone); require(endedAt == null || endedAt >= startedAt); require(pausedMs >= 0);recordedDate?.let {LocalDate.parse(it)} }
     fun date(): LocalDate = recordedDate?.let(LocalDate::parse)?:Instant.ofEpochMilli(startedAt).atZone(ZoneId.of(zone)).toLocalDate()
     fun elapsed(now: Long): Long = ((pauseStarted ?: endedAt ?: now) - startedAt - pausedMs).coerceAtLeast(0)
+    fun linkedOccurrenceIds():List<String> = (listOfNotNull(occurrenceId)+completedOccurrenceIds).distinct()
 }
 data class SetEntry(
     val id: String = newId(), val sessionId: String, val exerciseId: String,
@@ -59,7 +67,7 @@ data class SetEntry(
     }
     fun validate(exercise: Exercise) {
         require(exerciseId == exercise.id)
-        if(exercise.id in listOf("one_arm_row","side_plank"))require(side!="双侧"){"此动作需明确选择左侧或右侧"}
+        if(exercise.requiresSide)require(side!="双侧"){"此动作需明确选择左侧或右侧"}
         when (exercise.type) {
             RecordType.LOAD_REPS -> require(loadKg != null && reps != null && seconds == null)
             RecordType.REPS -> require(loadKg == null && reps != null && seconds == null)
@@ -72,7 +80,7 @@ data class Profile(val adult: String = "未填写", val experience: String = "�
 }
 data class CheckIn(val id: String = newId(), val muscle: MuscleId, val date: String, val soreness: Int?, val modifiedAt: Long = System.currentTimeMillis()) { init { require(soreness == null || soreness in 0..10); LocalDate.parse(date) } }
 /** One current aggregate schema carried by the database payload so older data can be migrated. */
-const val JOURNAL_SCHEMA = 2
+const val JOURNAL_SCHEMA = 3
 /** A baseline the user typed in, kept apart from baselines derived from history; `source` says where it came from. */
 data class ManualBaseline(val exerciseId: String, val loadKg: Double, val reps: Int, val source: String, val recordedOn: String, val modifiedAt: Long = System.currentTimeMillis()) {
     init { require(exerciseId.isNotBlank() && loadKg.isFinite() && loadKg >= 0.0 && reps > 0 && source.isNotBlank()); LocalDate.parse(recordedOn) }
@@ -124,6 +132,10 @@ data class Journal(
             val known=s.exerciseIds+setsBySession[s.id].orEmpty().map {it.exerciseId}
             require(done.all {d->d.exerciseId in known && d.completedAt>=s.startedAt && (s.endedAt==null || d.completedAt<=s.endedAt)})
         }}
+        require(sessions.all {it.completedOccurrenceIds.distinct().size==it.completedOccurrenceIds.size})
+        val occurrenceById=occurrences.associateBy {it.id}
+        require(sessions.all {s->s.completedOccurrenceIds.isEmpty() ||
+            (s.status!=SessionStatus.ACTIVE && s.completedOccurrenceIds.all {occurrenceById[it]?.status==OccurrenceStatus.COMPLETED})})
         val courseById=courses.associateBy {it.id}
         for (c in courses + occurrences.mapNotNull { it.override } + sessions.mapNotNull { it.snapshot }) {
             require(c.name.isNotBlank()); require(c.exercises.map {it.exerciseId}.distinct().size==c.exercises.size); require(c.exercises.all {e->e.targets.isNotEmpty() && e.exerciseId in exerciseById})

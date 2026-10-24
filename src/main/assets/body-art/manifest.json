@@ -9,11 +9,9 @@
   "runtime": "Native Canvas fixed silhouette clips and visible-bellies-v2 independently traced side geometry; the same paths drive tint, selection, picking and thumbnails.",
   "limitations": "Illustrative, not clinical anatomy or measured physiological load. Clothing-covered muscles remain accessible via text list; no false coloring of clothing.",
   "files": {
-    "dumbbell-bench.png": "e6e103b4737a2955c2aa2dcb982d45f2e82a19a12cca706ee595653c7aa9537b",
     "back.png": "828c38303a2b08c2b602470fc11db5a670e78a25f956fd9d83438c67358ce97f",
     "front.png": "e43a246cb1458a739a8c63906fc5e3f45211df1b96fb9b3629225fff3c9526d2"
   },
-  "exerciseThumbnail": "dumbbell-bench.png generated for this project, exec-5d1f0ff5-eddc-45c1-acc6-fc787bc7c96d, exercise illustration only; not user photo or load heatmap",
   "geometry": {
     "version": "visible-bellies-v2",
     "sourceDimensions": [

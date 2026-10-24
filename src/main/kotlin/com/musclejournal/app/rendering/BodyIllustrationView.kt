@@ -15,6 +15,9 @@ import kotlin.math.roundToInt
 class BodyIllustrationView(context:Context,private val selected:(MuscleId,String)->Unit,private val failure:(String)->Unit,private val injectFailure:Boolean=false):View(context) {
     private data class Area(val muscle:MuscleId,val side:String,val path:Path,val region:Region)
     private val paint=Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG)
+    private val destination=RectF(0f,0f,1024f,1536f)
+    private val trainingFilter=PorterDuffColorFilter(Color.rgb(224,86,89),PorterDuff.Mode.MULTIPLY)
+    private val loadFilter=PorterDuffColorFilter(Color.rgb(255,65,69),PorterDuff.Mode.MULTIPLY)
     private var bitmap:Bitmap?=null;private var view=BodyView.FRONT
     private var areas=emptyList<Area>();private var state=MuscleRenderState(MuscleDisplayMode.SESSION_LOAD)
     private var factor=1f;private var offsetX=0f;private var offsetY=0f
@@ -26,20 +29,20 @@ class BodyIllustrationView(context:Context,private val selected:(MuscleId,String
     private val silhouette:Path get()=if(view==BodyView.FRONT)frontSilhouette else backSilhouette
     init {contentDescription="固定角度人体肌群图，点击选择肌群；也可使用肌群列表";isFocusable=true;load()}
     private fun load(){
-        bitmap?.recycle();bitmap=null
-        try {check(!injectFailure){"测试人体资源不可用"};bitmap=context.assets.open("body-art/${if(view==BodyView.FRONT)"front" else "back"}.png").use {BitmapFactory.decodeStream(it)}?:error("图片不可读取");areas=regions(view)}
+        bitmap=null
+        try {check(!injectFailure){"测试人体资源不可用"};bitmap=BodyArt.get(context,view);areas=regions(view)}
         catch(e:Exception){post {failure(e.message?:"人体暂时无法显示")}}
         invalidate()
     }
     fun update(newView:BodyView,newState:MuscleRenderState){if(newView!=view){view=newView;load()};state=newState;invalidate()}
-    fun release(){bitmap?.recycle();bitmap=null}
+    fun release(){bitmap=null}
     override fun onDraw(canvas:Canvas){
         super.onDraw(canvas);val image=bitmap?:return
         factor=min(width/1024f,height/1536f);offsetX=(width-1024f*factor)/2;offsetY=(height-1536f*factor)/2
         val saved=canvas.save();canvas.translate(offsetX,offsetY);canvas.scale(factor,factor)
         canvas.clipPath(silhouette)
-        val dst=RectF(0f,0f,1024f,1536f);paint.colorFilter=null;paint.alpha=255;paint.style=Paint.Style.FILL
-        canvas.drawBitmap(image,null,dst,paint)
+        paint.colorFilter=null;paint.alpha=255;paint.style=Paint.Style.FILL
+        canvas.drawBitmap(image,null,destination,paint)
         areas.forEach {area->
             val visual=state.muscles[area.muscle]
             val alpha=when(state.mode){
@@ -52,7 +55,7 @@ class BodyIllustrationView(context:Context,private val selected:(MuscleId,String
                 MuscleDisplayMode.RECOVERY_ESTIMATE -> {val score=visual?.normalizedScore;when {score==null->0;score<0.25f->0;score<0.5f->140;score<0.75f->195;else->240}}
             }
             val selectedArea=state.selectedMuscle==area.muscle && (state.selectedSide=="双侧" || state.selectedSide==area.side)
-            if(alpha>0){val clip=canvas.save();canvas.clipPath(area.path);paint.colorFilter=PorterDuffColorFilter(if(state.mode==MuscleDisplayMode.TRAINING_STATE)Color.rgb(224,86,89)else Color.rgb(255,65,69),PorterDuff.Mode.MULTIPLY);paint.alpha=alpha;canvas.drawBitmap(image,null,dst,paint);canvas.restoreToCount(clip)}
+            if(alpha>0){val clip=canvas.save();canvas.clipPath(area.path);paint.colorFilter=if(state.mode==MuscleDisplayMode.TRAINING_STATE)trainingFilter else loadFilter;paint.alpha=alpha;canvas.drawBitmap(image,null,destination,paint);canvas.restoreToCount(clip)}
             if(selectedArea){paint.colorFilter=null;paint.alpha=255;paint.color=if(state.mode==MuscleDisplayMode.TRAINING_STATE)Color.rgb(255,75,79)else Color.WHITE;paint.style=Paint.Style.STROKE;paint.strokeWidth=2f/factor;canvas.drawPath(area.path,paint);paint.style=Paint.Style.FILL}
         }
         paint.colorFilter=null;paint.alpha=255;canvas.restoreToCount(saved)

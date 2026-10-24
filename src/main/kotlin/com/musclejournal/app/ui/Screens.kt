@@ -92,7 +92,8 @@ internal enum class HistoryPeriod(val label:String) {
 }
 @Composable internal fun TrendScreen(j:Journal,id:String?){
     val e=j.exercises().firstOrNull {it.id==id}?:return;PageTitle(e.name)
-    j.sessions.filter {s->ExerciseProgress.completed(j,s).any {it.exerciseId==e.id}}.sortedWith(compareByDescending<Session>{it.date()}.thenByDescending {it.startedAt}).forEach {s->TrainingCard{TrainingCardRow(s.date().toString(),e,"已完成")}}
+    val actions=ExerciseProgress.index(j)
+    j.sessions.filter {s->actions.forSession(s).any {it.exerciseId==e.id}}.sortedWith(compareByDescending<Session>{it.date()}.thenByDescending {it.startedAt}).forEach {s->TrainingCard{TrainingCardRow(s.date().toString(),e,"已完成")}}
 }
 @Composable internal fun CoursesScreen(j:Journal,busy:Boolean,start:(Course)->Unit,edit:(Course?)->Unit,copy:(Course)->Unit,archive:(Course)->Unit,schedule:(Course)->Unit,startOccurrence:(Occurrence)->Unit,status:(Occurrence,OccurrenceStatus)->Unit,editOccurrence:(Occurrence)->Unit,arrange:(LocalDate)->Unit,focusDate:String?=null,onFocusConsumed:()->Unit={}){
     var tab by rememberSaveable {mutableStateOf("训练安排")}
@@ -115,9 +116,9 @@ internal enum class HistoryPeriod(val label:String) {
     Column(Modifier.fillMaxSize().verticalScroll(if(tab=="训练安排")scheduleScroll else coursesScroll).padding(bottom=84.dp),verticalArrangement=Arrangement.spacedBy(8.dp)){
     if(tab=="训练安排"){
         val monday=day.with(DayOfWeek.MONDAY)
-        val scheduled=j.occurrences.filter {it.status==OccurrenceStatus.PLANNED}
+        val scheduled=j.occurrences.filter {it.status in setOf(OccurrenceStatus.PLANNED,OccurrenceStatus.COMPLETED)}
             .mapNotNull {o->(o.override?:j.courses.firstOrNull {it.id==o.courseId})?.takeIf {it.exercises.isNotEmpty()}?.let {o to it}}
-        val scheduledDates=scheduled.map {it.first.date}.toSet()
+        val scheduledDates=scheduled.filter {it.first.status==OccurrenceStatus.PLANNED}.map {it.first.date}.toSet()
         Row(Modifier.fillMaxWidth().padding(vertical=12.dp).pointerInput(day){detectHorizontalDragGestures {_,amount->if(kotlin.math.abs(amount)>16)day=if(amount>0)day.minusWeeks(1)else day.plusWeeks(1)}},horizontalArrangement=Arrangement.spacedBy(5.dp)){
             repeat(7){n->
                 val d=monday.plusDays(n.toLong())
@@ -133,11 +134,11 @@ internal enum class HistoryPeriod(val label:String) {
             }
         }
         scheduled.filter {it.first.date==day.toString()}.forEach {(o,c)->key(o.id){
-            val session=j.sessions.firstOrNull {it.occurrenceId==o.id}
-            SwipeScheduleRow(o.id,session==null&&!busy,{editOccurrence(o)},{status(o,OccurrenceStatus.CANCELLED)}){
+            val session=j.sessions.firstOrNull {o.id in it.linkedOccurrenceIds()}
+            SwipeScheduleRow(o.id,o.status==OccurrenceStatus.PLANNED&&session==null&&!busy,{editOccurrence(o)},{status(o,OccurrenceStatus.CANCELLED)}){
                 c.exercises.forEach {ce->
                     val exercise=j.exercise(ce.exerciseId)
-                    TrainingCardRow(exercise.name,exercise,trailing={Text(session?.status?.label?:"已安排",color=if(session==null)Muted else Accent,fontSize=12.sp)})
+                    TrainingCardRow(exercise.name,exercise,trailing={Text(if(o.status==OccurrenceStatus.COMPLETED)"已完成"else session?.status?.label?:"已安排",color=if(session==null)Muted else Accent,fontSize=12.sp)})
                 }
             }
         }}
@@ -205,7 +206,3 @@ internal enum class HistoryPeriod(val label:String) {
 }
 @Composable internal fun DateField(label:String,value:LocalDate,change:(LocalDate)->Unit){var show by remember {mutableStateOf(false)};val dirty=LocalFormDirty.current;Column{Text(label,color=Muted,fontSize=14.sp);Surface(color=Panel,shape=RoundedCornerShape(14.dp),border=BorderStroke(1.dp,Outline)){Box(Modifier.padding(horizontal=12.dp)){DesignRow(value.toString(),icon=Icons.Outlined.CalendarMonth,click={show=!show})}};if(show)CalendarGrid(value){dirty();change(it);show=false}}}
 @Composable internal fun OccurrenceEditor(j:Journal,o:Occurrence,busy:Boolean,close:()->Unit,save:(Occurrence)->Unit){var date by remember {mutableStateOf(LocalDate.parse(o.date))};var course by remember {mutableStateOf(o.override?:j.courses.firstOrNull {it.id==o.courseId})};var query by rememberSaveable {mutableStateOf("")};Editor("修改本次安排",busy,close,{save(o.copy(date=date.toString(),override=course,modifiedAt=System.currentTimeMillis()))},"保存本次"){DateField("训练日期",date){date=it};Text("选择课程");Input("搜索课程",query,{query=it},trackChange=false);j.courses.filter {!it.archived && it.name.contains(query)}.forEach {c->DesignRow(c.name,click={course=c},trailing={if(c.id==course?.id)Icon(Icons.Outlined.CheckCircle,null,tint=Accent)})};course?.exercises?.forEach {ce->DesignRow(j.exercise(ce.exerciseId).name,leading={ExerciseThumbnail(j.exercise(ce.exerciseId),Modifier.size(70.dp,54.dp))},trailing={TapIcon(Icons.Outlined.RemoveCircleOutline,"移除此动作"){course=course?.copy(exercises=course!!.exercises.filterNot {it.exerciseId==ce.exerciseId})}})}}}
-@Composable internal fun SettingsEditor(s:Settings,busy:Boolean,close:()->Unit,save:(Settings)->Unit){
-    var motion by remember {mutableStateOf(s.motion)}
-    Editor("显示设置",busy,close,{save(s.copy(motion=motion))},"保存设置"){Toggle("动画效果",motion){motion=it}}
-}

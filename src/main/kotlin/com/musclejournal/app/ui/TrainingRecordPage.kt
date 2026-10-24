@@ -17,12 +17,26 @@ import androidx.compose.ui.layout.positionInWindow
 import androidx.compose.ui.unit.*
 import com.musclejournal.app.domain.*
 
-@Composable internal fun TrainingRecordPage(j:Journal,ids:List<String>,busy:Boolean,change:(List<String>)->Unit,save:()->Unit,title:String="记录训练",saveLabel:String="保存记录 · ${ids.size}个动作",requireSelection:Boolean=true){
+@Composable internal fun TrainingRecordPage(
+    j:Journal,
+    ids:List<String>,
+    busy:Boolean,
+    change:(List<String>)->Unit,
+    save:()->Unit,
+    selectedSides:Map<String,String?> = emptyMap(),
+    onSideChange:(String,String?)->Unit = {_,_->},
+    title:String="记录训练",
+    saveLabel:String="保存记录 · ${ids.size}个动作",
+    requireSelection:Boolean=true,
+    enforceSides:Boolean=true,
+){
     var query by rememberSaveable {mutableStateOf("")}
     var category by rememberSaveable {mutableStateOf("全部")}
+    var submitting by remember {mutableStateOf(false) }
     val centers=remember {mutableMapOf<String,Float>()}
     var dragged by remember {mutableStateOf<String?>(null)}
     var offset by remember {mutableFloatStateOf(0f)}
+    LaunchedEffect(busy){if(!busy)submitting=false}
     fun toggle(id:String){if(!busy)change(if(id in ids)ids-id else ids+id)}
     val visible=TodayTrainingPlan.orderedExercises(j,ids).filter {e->
         (e.name.contains(query)||e.equipment.contains(query)) && when(category){
@@ -46,24 +60,39 @@ import com.musclejournal.app.domain.*
             visible.forEach {e->key(e.id){
                 val selected=e.id in ids
                 val moving=dragged==e.id
-                Row(Modifier.fillMaxWidth().onGloballyPositioned {centers[e.id]=it.positionInWindow().y+it.size.height/2f}
-                    .zIndex(if(moving)1f else 0f).graphicsLayer {translationY=if(moving)offset else 0f}
-                    .background(if(selected)Panel else Color.Transparent)
-                    .pointerInput(ids,busy,visible.map {it.id}){var origin=0f;detectDragGesturesAfterLongPress(
-                        onDragStart={if(selected&&!busy){origin=centers[e.id]?:0f;offset=0f;dragged=e.id}},
-                        onDrag={event,delta->if(dragged==e.id){event.consume();offset+=delta.y}},
-                        onDragCancel={dragged=null;offset=0f},
-                        onDragEnd={if(dragged==e.id){val y=origin+offset;val target=ids.filter {id->visible.any {it.id==id}}.minByOrNull {kotlin.math.abs((centers[it]?:y)-y)};if(target!=null&&!busy){val next=ids.toMutableList();next.add(ids.indexOf(target),next.removeAt(ids.indexOf(e.id)));change(next)}};dragged=null;offset=0f})}
-                    .clickable(enabled=!busy){toggle(e.id)}.heightIn(min=56.dp).padding(start=8.dp),verticalAlignment=Alignment.CenterVertically){
-                    ExerciseThumbnail(e,Modifier.size(44.dp,42.dp))
-                    Text(e.name,color=Color.White,fontSize=16.sp,modifier=Modifier.weight(1f).padding(horizontal=12.dp))
-                    IconButton({toggle(e.id)},enabled=!busy){Icon(if(selected)Icons.Outlined.RemoveCircle else Icons.Outlined.AddCircleOutline,if(selected)"取消选择${e.name}"else "选择${e.name}",tint=Color.White,modifier=Modifier.size(26.dp))}
+                Column(Modifier.fillMaxWidth().background(if(selected)Panel else Color.Transparent)) {
+                    Row(Modifier.fillMaxWidth().onGloballyPositioned {centers[e.id]=it.positionInWindow().y+it.size.height/2f}
+                        .zIndex(if(moving)1f else 0f).graphicsLayer {translationY=if(moving)offset else 0f}
+                        .pointerInput(ids,busy,visible.map {it.id}){var origin=0f;detectDragGesturesAfterLongPress(
+                            onDragStart={if(selected&&!busy){origin=centers[e.id]?:0f;offset=0f;dragged=e.id}},
+                            onDrag={event,delta->if(dragged==e.id){event.consume();offset+=delta.y}},
+                            onDragCancel={dragged=null;offset=0f},
+                            onDragEnd={if(dragged==e.id){val y=origin+offset;val target=ids.filter {id->visible.any {it.id==id}}.minByOrNull {kotlin.math.abs((centers[it]?:y)-y)};if(target!=null&&!busy){val next=ids.toMutableList();next.add(ids.indexOf(target),next.removeAt(ids.indexOf(e.id)));change(next)}};dragged=null;offset=0f})}
+                        .clickable(enabled=!busy){toggle(e.id)}.heightIn(min=56.dp).padding(start=8.dp),verticalAlignment=Alignment.CenterVertically){
+                        ExerciseThumbnail(e,Modifier.size(44.dp,42.dp))
+                        Text(e.name,color=Color.White,fontSize=16.sp,modifier=Modifier.weight(1f).padding(horizontal=12.dp))
+                        IconButton({toggle(e.id)},enabled=!busy){Icon(if(selected)Icons.Outlined.RemoveCircle else Icons.Outlined.AddCircleOutline,if(selected)"取消选择${e.name}"else "选择${e.name}",tint=Color.White,modifier=Modifier.size(26.dp))}
+                    }
+                    if(selected && enforceSides && e.requiresSide){
+                        Row(Modifier.padding(start=64.dp,end=8.dp,bottom=8.dp),horizontalArrangement=Arrangement.spacedBy(8.dp)){
+                            Text("侧别",color=Muted,fontSize=12.sp,modifier=Modifier.align(Alignment.CenterVertically))
+                            listOf("左侧","右侧").forEach {side->
+                                FilterChip(
+                                    selected=selectedSides[e.id]==side,
+                                    onClick={onSideChange(e.id,side)},
+                                    label={Text(side)},
+                                    enabled=!busy,
+                                )
+                            }
+                        }
+                    }
                 }
                 HorizontalDivider(color=Outline,thickness=0.5.dp)
             }}
         }
         Spacer(Modifier.height(12.dp))
-        Action(saveLabel,!busy&&(ids.isNotEmpty()||!requireSelection),save)
+        val sidesReady=!enforceSides || ids.all {!j.exercise(it).requiresSide || selectedSides[it] in listOf("左侧","右侧")}
+        Action(saveLabel,!busy&&!submitting&&sidesReady&&(ids.isNotEmpty()||!requireSelection)){if(!submitting){submitting=true;save()}}
         Spacer(Modifier.height(12.dp))
     }
 }

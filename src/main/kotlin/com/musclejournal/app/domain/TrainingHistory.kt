@@ -12,9 +12,10 @@ object TrainingHistory {
     fun records(j:Journal,from:LocalDate,to:LocalDate,query:String="",now:Long=System.currentTimeMillis()):List<HistoryAction> {
         require(to>=from)
         val search=query.trim()
+        val actions=ExerciseProgress.index(j)
         return j.sessions.filter {it.status!=SessionStatus.ACTIVE}.flatMap {s->
             val titleMatches=s.title.contains(search,ignoreCase=true)
-            ExerciseProgress.completed(j,s).filter {it.completedAt<=now}.mapNotNull {action->
+            actions.forSession(s).filter {it.completedAt<=now}.mapNotNull {action->
                 val at=Instant.ofEpochMilli(action.completedAt).atZone(ZoneId.of(s.zone))
                 val date=s.recordedDate?.let(LocalDate::parse)?:at.toLocalDate()
                 if(date !in from..to || (!titleMatches && !j.exercise(action.exerciseId).name.contains(search,ignoreCase=true)))null

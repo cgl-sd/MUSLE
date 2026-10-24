@@ -20,7 +20,7 @@ object Catalog {
         e("lat_pulldown","高位下拉",listOf(LATS),listOf(BICEPS,FOREARMS),equipment="固定器械",convention="同一器械标示kg"),
         e("pullup","引体向上",listOf(LATS),listOf(BICEPS,FOREARMS),RecordType.REPS,"自重","仅次数，辅助重量请另建动作"),
         e("cable_row","坐姿绳索划船",listOf(LATS,TRAPEZIUS),listOf(BICEPS,SHOULDERS),equipment="绳索",convention="同一器械标示kg"),
-        e("one_arm_row","单臂哑铃划船",listOf(LATS),listOf(BICEPS,TRAPEZIUS),convention="单只哑铃kg，须选择左/右侧"),
+        e("one_arm_row","单臂哑铃划船",listOf(LATS),listOf(BICEPS,TRAPEZIUS),convention="单只哑铃kg，须选择左/右侧").copy(requiresSide=true),
         e("shrug","哑铃耸肩",listOf(TRAPEZIUS),convention="两只哑铃合计kg"),
         e("curl","哑铃弯举",listOf(BICEPS),listOf(FOREARMS),convention="两只哑铃合计kg；单臂另建变式"),
         e("hammer_curl","锤式弯举",listOf(BICEPS,FOREARMS),convention="两只哑铃合计kg；肌群显示为粗分类"),
@@ -37,7 +37,7 @@ object Catalog {
         e("calf_raise","站姿提踵",listOf(CALVES),source=LOWER),
         e("back_extension","背伸展",listOf(LOWER_BACK),listOf(GLUTES,HAMSTRINGS),RecordType.REPS,"自重","仅次数",source=BACK),
         e("plank","平板支撑",listOf(ABS),listOf(OBLIQUES),RecordType.DURATION,"自重","持续秒数，不折算负重",source=AXIAL),
-        e("side_plank","侧平板支撑",listOf(OBLIQUES),listOf(ABS),RecordType.DURATION,"自重","持续秒数，选择左/右侧",source=AXIAL),
+        e("side_plank","侧平板支撑",listOf(OBLIQUES),listOf(ABS),RecordType.DURATION,"自重","持续秒数，选择左/右侧",source=AXIAL).copy(requiresSide=true),
         e("crunch","卷腹",listOf(ABS),type=RecordType.REPS,equipment="自重",convention="仅次数",source=AXIAL),
     )
     val byId:Map<String,Exercise> = exercises.associateBy {it.id}

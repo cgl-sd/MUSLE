@@ -7,7 +7,7 @@ object TrainingSchedule {
     fun save(j:Journal,date:LocalDate,ids:List<String>,editingId:String?=null,now:Long=System.currentTimeMillis()):Journal {
         require(ids.isNotEmpty() && ids.distinct().size==ids.size){"请选择动作"}
         ids.forEach {j.exercise(it)}
-        val linked=j.sessions.mapNotNull {it.occurrenceId}.toSet()
+        val linked=j.sessions.flatMap {it.linkedOccurrenceIds()}.toSet()
         val original=editingId?.let {id->j.occurrences.first {it.id==id}.also {
             require(it.status==OccurrenceStatus.PLANNED && id !in linked){"此安排已开始或已取消"}
         }}

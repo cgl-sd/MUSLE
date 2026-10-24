@@ -81,7 +81,7 @@ import java.time.*
         Surface(color=Ink,modifier=Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing)){
             Column(Modifier.padding(horizontal=20.dp)){
                 CompositionLocalProvider(LocalPageBack provides {choosing=false}){
-                    TrainingRecordPage(j,draft,busy=false,change={draft=it},save={if(draft!=selected){dirty();change(draft)};choosing=false},title="选择动作",saveLabel="确认选择",requireSelection=false)
+                    TrainingRecordPage(j,draft,busy=false,change={draft=it},save={if(draft!=selected){dirty();change(draft)};choosing=false},title="选择动作",saveLabel="确认选择",requireSelection=false,enforceSides=false)
                 }
             }
         }
@@ -111,7 +111,7 @@ import java.time.*
         save(Course(id,name.trim(),rows,notes,false),date)
     },"确认安排",spacing=8.dp){
         val dirty=LocalFormDirty.current
-        CompactInput("课程名称",name,{name=it},false)
+        CompactInput("课程名称",name,{name=it},false,MAX_COURSE_NAME_LENGTH)
         DateField("训练日期",date){date=it}
         Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically){
             Text("课程动作",fontSize=14.sp,color=Muted,modifier=Modifier.weight(1f))

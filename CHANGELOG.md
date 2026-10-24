@@ -2,6 +2,48 @@
 
 本文件按日期记录已发生的项目变化与验证结果。当前使用方法见 [README.md](README.md)，持续开发约束见 [AGENTS.md](AGENTS.md)，后续路线见 [开发计划](docs/DEVELOPMENT_PLAN.md)。
 
+## 2026-10-24 — 存储审查收口、单侧动作与 0.4.0 发布
+
+- 修复 v1/v2 旧数据库 `journal_state` 缺少 `id=1` 状态行时可能被当成空库迁移的问题；现在迁移前强制检查状态行，失败时由 SQLite 事务回滚并保留原库。数据库升级到 v4，新增 `journal_records(kind,position)` 索引并改用 SQL 顺序读取，减少全表排序。
+- 新增 `ExerciseActionIndex`：历史、疲劳、成就和趋势一次性建立场次到动作事实的映射，旧 `sets` 不再在每个场次内反复全表扫描。`changeOnce` 为一次性保存提供同步幂等键，训练记录页面同时增加提交锁；重复点击同一保存不会生成第二场训练。
+- `CompletedAction` 新增向后兼容的可选 `side`，单臂划船和侧平板在动作记录、补录中要求选择左侧或右侧；旧记录缺少侧别时仍按原双侧规则读取。备注、训练名称和课程名称增加输入与领域边界，避免异常长文本进入新记录。
+- 删除未使用的训练插画资源、`HomeTraining` 音调旧路径和不可达的 `MuscleDetailPanel`/`RecordBody`。Release 开启 minify/resource shrinking，测试源码迁入 `src/test/kotlin` 与 `src/androidTest/kotlin` 并增加 GitHub Actions；自适应图标补充 monochrome 层，Android 旧版完整备份也显式关闭。
+- 验证：JVM 单测 123 项通过；设备端 40 项 v1/v2/v3/v4 迁移、缺行回滚、事务、revision、幂等、压缩和 side 往返通过；启动图标 4 项、人体几何 327 项通过。独立 v4 测试库单侧动作 UI smoke 确认左侧选择、保存往返、测试库恢复与生产库 SHA-256 不变。Debug、androidTest、R8 Release 和 lint 通过（0错误/12警告）；正式 APK 为 `tmp/release/MuscleJournal-0.4.0.apk`，SHA-256 `970e2b84753903027c55ab16ce88f23b43a13df605e842c300f5448ae274285c`，证据位于 `tmp/verification/side-storage-20261024/` 与 `tmp/logs/`。API26 未复验。
+
+## 2026-10-24 — 安排完成联动与节省空间的本地存储
+
+- 首页保存动作后，将当天、未被其他场次关联且本次已完成全部安排动作的条目标记为COMPLETED；课程页展示“已完成”，不再重复预选。新增可选completedOccurrenceIds支持一次记录关联多个安排并兼容旧occurrenceId；删除对应记录后恢复待训练。未做动作、未来/取消/休息安排保留，已有草稿不因安排变化自动刷新。
+- 本地SQLite升级v3：journal_meta与按类型/稳定ID分项的journal_records替代单个整库JSON，按差异更新条目，较大内容仅在节省空间时GZIP无损压缩。资料修改不重写训练行，追加记录仅写新条目；元数据与动作/安排同事务提交，revision校验拒绝陈旧实例覆盖。衍生疲劳与人体着色不重复存盘。
+- v1/v2旧库在事务内迁移、逐字段重载核对后移除旧聚合表，失败保留原表/版本，不自动删除或清空数据库。历史组、快照、基线、目标和旧字段全部兼容保留；增加条目编码/UTF-8/ID/顺序/数量/大小及完成关联校验，新存储支持重载超过旧8MB聚合上限的历史。当前启动仍后台读取整体Journal，SQL按日期分页未实现；SQLite空闲页复用，不保证删除后立即缩小已分配文件。
+- 1500场模拟训练体积对比：旧数据库1437696字节、新数据库753664字节，节省47.6%；写入并重载合计502ms（非独立启动耗时，非所有数据的压缩保证）。基准tmp/verification/storage-schedule-20261024/benchmark.json，方案与边界见开发文档§18.69。
+- 实机流程发现并修复首页保存后最多一分钟的列表滞后：Journal变更时使用当前时间过滤刚保存的事实，保留未来记录排除。TrainingFatigue计算参数未改变，顶部与人体同源。
+- 验证：122项单元测试0失败、35项隔离设备检查通过，覆盖新旧序列化、v1/v2迁移与失败保留、增量写入、真实SQL中途失败回滚、并发版本冲突、损坏条目拒读、体积及大历史重载。debug/release/androidTest构建与lint通过（0错误/17个警告，新增1项为UseKtx风格建议）。专用YangJiBao_API37覆盖安装Success；页面验证安排预选→保存→首页即时记录/6分与正确肌群着色→已完成安排→重启保留→不再重复预选通过。测试只用独立测试库，生产库SHA-256不变，已恢复原偏好/测试库并关闭测试模式，生产冷启动Status ok/COLD/1358ms。证据tmp/verification/storage-schedule-20261024/，日志tmp/logs/storage-schedule-final-build.log及tmp/logs/storage-schedule-device-tests.log；API26未复验。
+
+## 2026-10-24 — 缩小人体工具与修正标注引线
+
+- 根据用户反馈，将人体右下角三个工具的可见圆圈由56dp缩至44dp、图标由36dp缩至28dp；独立56dp点击区域及8dp布局间距保持，选中态与右侧标注安全区保留。
+- 修复引线横穿名称：按实际字宽及字体缩放计算文字边界，引线在文字外侧保留6dp空隙；名称与线端垂直居中。仍使用BodyAnnotations原有肌腹锚点和人体等比变换，臀肌虚线规则保持。
+- 离线assembleDebug/lintDebug通过（0错误/16个既有警告）；核验YangJiBao_API37后覆盖安装Success，停止旧进程后冷启动Status ok/COLD/2316ms。默认与130%字体下正面8类/背面9类标注、真实点击名称打开/关闭介绍、正背切换通过；截图确认名称与引线分离。三个圆圈直径实测116px（44dp），外层点击区域147px（56dp）。字体已恢复1.0，无崩溃日志，未写入训练事实或修改用户资料。证据tmp/verification/annotation-spacing-20261024/；构建日志tmp/logs/home-tools-label-spacing-final-build.log。API26未复验。
+
+## 2026-10-24 — 首页工具比例与二级页面底栏
+
+- 根据用户最终反馈保留正面、背面、肌群三个独立圆形工具，将圈内图标从24dp调整至36dp；圆圈及触摸区域56dp、间距8dp、既有选中态和标注安全区保持。
+- 底部首页/课程/记录/个人导航仅在四个一级页面显示；设置、关于、成就、记录训练、添加训练、详情及编辑等二级页面隐藏，不保留导航占位，返回一级页面恢复。首页开始/继续记录胶囊规则保持。
+- 离线assembleDebug和lintDebug通过（0错误/16个既有警告）；核验YangJiBao_API37后覆盖安装Success，停止旧进程后冷启动Status ok/COLD/2361ms。19个页面/返回状态检查通过，覆盖四个一级页面、记录训练、设置、关于、成就、身体资料、添加训练、补录及返回恢复；截图确认36dp图标比例，三个按钮实测56dp、间距8dp。验证未保存测试训练或修改用户资料。证据tmp/verification/secondary-navigation-20261024/，构建日志tmp/logs/home-tools-secondary-nav-final-build.log；API26未复验。
+
+## 2026-10-24 — 模拟器改名为 YangJiBao_API37
+
+- 按用户要求将项目模拟器名称从 `MuscleJournal_API37` 改为 `YangJiBao_API37`。原 `~/.android/avd` 配置已不存在且无可用数据；新 AVD 使用本机现有 `system-images;android-37.1;google_apis_playstore_ps16k;arm64-v8a` 和 Pixel 8 模板创建，未下载新镜像。
+- 新 AVD 启动成功，`adb emu avd name` 核验为 `YangJiBao_API37`，当前序列号 `emulator-5554`。覆盖安装当前 Debug APK Success，冷启动Status ok/COLD/2027ms。
+- 新模拟器为全新数据环境，应用显示首次引导页（“养肌宝 / 记录每一次训练”），未包含旧模拟器数据；正常生产数据库和 onboarding 状态未被测试替换。截图tmp/verification/yangjibao-avd-open-20261024.png。
+- AGENTS和README中的当前AVD名称同步更新；历史记录中的旧名称保留为历史事实。API26未复验。
+
+## 2026-10-24 — 删除设置中的显示设置
+
+- 按用户要求移除设置页“显示设置”入口和不可达的SettingsEditor页面分支；设置页现在只保留“检查更新”和“关于”，个人页设置摘要同步改为“更新 · 关于”。
+- Settings.motion及序列化字段继续保留，旧备份、重新启动和既有庆祝动效状态兼容；不删除或重置用户设置数据，仅不再提供修改入口。
+- 离线testDebugUnitTest、assembleDebug与lintDebug通过；114项单元测试0失败，Lint 0错误/16个既有警告。专用MuscleJournal_API37覆盖安装后设置页、个人页和关于入口验证通过，当前进程无FATAL EXCEPTION。证据tmp/verification/settings-without-display-20261024/；API26未复验。
+
 ## 2026-10-24 — 应用内更新与 0.3.0 发布
 
 - 参考 PitPitch 的 GitHub Release 更新链路，在设置页增加“检查更新”。固定仓库为 `cgl-sd/MUSLE`，只接受正式 Release 的 `MuscleJournal-<version>.apk` 与同名 `.sha256`，用户确认后才下载。

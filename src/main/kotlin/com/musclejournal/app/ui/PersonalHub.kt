@@ -82,7 +82,7 @@ import java.time.LocalDate
     }
     Spacer(Modifier.height(12.dp))
     Surface(color=Panel,shape=RoundedCornerShape(16.dp)){
-        Box(Modifier.padding(horizontal=12.dp)){DesignRow("设置","更新 · 显示 · 关于",icon=Icons.Outlined.Settings,click={go("settings")})}
+        Box(Modifier.padding(horizontal=12.dp)){DesignRow("设置","更新 · 关于",icon=Icons.Outlined.Settings,click={go("settings")})}
     }
     selectedMedal?.let {id->medals.firstOrNull {it.definition.id==id}?.let {MedalPresentation(j,it){selectedMedal=null}}}
 }

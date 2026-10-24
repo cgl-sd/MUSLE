@@ -42,6 +42,8 @@ object CoursePresets {
 object CoursePlanning {
     fun save(j:Journal,course:Course,date:LocalDate,now:Long=System.currentTimeMillis()):Journal {
         require(course.name.isNotBlank()&&course.exercises.isNotEmpty()){"请填写课程名称并添加动作"}
+        require(course.name.trim().length<=MAX_COURSE_NAME_LENGTH){"课程名称过长"}
+        require(course.notes.length<=MAX_COURSE_NOTES_LENGTH){"课程备注过长"}
         require(course.exercises.map {it.exerciseId}.distinct().size==course.exercises.size){"课程动作不能重复"}
         course.exercises.forEach {j.exercise(it.exerciseId)}
 
@@ -51,7 +53,7 @@ object CoursePlanning {
             modifiedAt=now,
         )
         val currentCourses=j.courses.filterNot {it.id==saved.id}+saved
-        val linked=j.sessions.mapNotNull {it.occurrenceId}.toSet()
+        val linked=j.sessions.flatMap {it.linkedOccurrenceIds()}.toSet()
         val pending=j.occurrences.firstOrNull {
             it.courseId==saved.id&&it.date==date.toString()&&
                 it.status==OccurrenceStatus.PLANNED&&it.id !in linked

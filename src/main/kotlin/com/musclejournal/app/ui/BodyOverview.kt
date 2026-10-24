@@ -101,7 +101,7 @@ import java.util.Locale
 @Composable private fun TodayTraining(j:Journal,now:Long,open:(String)->Unit){
     val nowMinute=now/60_000L
     val today=remember(nowMinute){LocalDate.now()}
-    val records=remember(j,today,nowMinute){ExerciseProgress.onDates(j,today,today,now)}
+    val records=remember(j,today,nowMinute){ExerciseProgress.onDates(j,today,today,maxOf(now,System.currentTimeMillis()))}
     HorizontalDivider(Modifier.padding(top=8.dp,bottom=12.dp),color=Outline);Text("训练",fontSize=20.sp,fontWeight=FontWeight.Bold)
     if(records.isEmpty())Text("暂无训练记录",color=Muted,fontSize=14.sp,modifier=Modifier.padding(vertical=16.dp))
     records.forEach {record->
@@ -125,8 +125,6 @@ import java.util.Locale
 @Composable private fun BodyTool(label:String,icon:ImageVector,selected:Boolean,onClick:()->Unit){
     Box(
         Modifier.size(56.dp).clip(CircleShape)
-            .background(if(selected)Accent.copy(alpha=.18f) else Color(0xFF141414),CircleShape)
-            .border(1.dp,if(selected)Accent.copy(alpha=.78f) else Outline,CircleShape)
             .clickable(role=Role.Button,onClick=onClick)
             .semantics(mergeDescendants=true){
                 contentDescription=label
@@ -134,7 +132,14 @@ import java.util.Locale
             },
         contentAlignment=Alignment.Center,
     ){
-        Icon(icon,null,tint=if(selected)Color.White else Color(0xFFB8B8B8),modifier=Modifier.size(24.dp))
+        Box(
+            Modifier.size(44.dp)
+                .background(if(selected)Accent.copy(alpha=.18f) else Color(0xFF141414),CircleShape)
+                .border(1.dp,if(selected)Accent.copy(alpha=.78f) else Outline,CircleShape),
+            contentAlignment=Alignment.Center,
+        ){
+            Icon(icon,null,tint=if(selected)Color.White else Color(0xFFB8B8B8),modifier=Modifier.size(28.dp))
+        }
     }
 }
 
@@ -181,7 +186,15 @@ import java.util.Locale
 
 @Composable internal fun ExerciseThumbnail(exercise:Exercise,modifier:Modifier){ExerciseLineIcon(exercise,modifier)}
 
-@Composable internal fun RecordBody(j:Journal,rows:List<SetEntry>,view:BodyView,modifier:Modifier){
-    val visual=remember(j,rows){MuscleId.entries.associateWith {m->MuscleVisualState(completedDirectSets=Metrics.muscle(j,m,rows).direct,completedLeftSets=Metrics.muscle(j,m,rows,"左侧").direct,completedRightSets=Metrics.muscle(j,m,rows,"右侧").direct)}}
-    AndroidView(factory={BodyIllustrationView(it,{_,_->},{})},update={it.update(view,MuscleRenderState(MuscleDisplayMode.SESSION_LOAD,visual))},onRelease={it.release()},modifier=modifier)
+@Composable internal fun MuscleIntroduction(j:Journal,muscle:MuscleId,close:()->Unit){
+    HorizontalDivider(color=Outline)
+    Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically){
+        Text(BodyAnnotations.title(muscle),fontSize=20.sp,fontWeight=FontWeight.Bold,modifier=Modifier.weight(1f))
+        IconButton(close){Icon(Icons.Outlined.Close,"关闭肌群介绍",tint=Muted)}
+    }
+    Text(MuscleGuide.introduction(muscle),fontSize=14.sp,color=Color.White)
+    Text("相关动作",fontSize=12.sp,color=Muted,modifier=Modifier.padding(top=8.dp))
+    val exercises=j.exercises().filter {muscle in it.primary}.take(3)
+    Text(exercises.joinToString(" · "){it.name},fontSize=13.sp,color=Color.White)
+    Spacer(Modifier.height(16.dp))
 }

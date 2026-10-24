@@ -22,7 +22,8 @@ object Actions {
         val index=j.sets.count {it.sessionId==s.id && it.exerciseId==row.exerciseId && !it.warmup}
         val targets=s.snapshot?.exercises?.firstOrNull {it.exerciseId==row.exerciseId}?.targets
         val rest=targets?.getOrNull(index)?.restSeconds ?: targets?.lastOrNull()?.restSeconds ?: j.settings.defaultRest
-        val updated=s.copy(exerciseIds=(s.exerciseIds+row.exerciseId).distinct(),completedActions=s.completedActions?.let {done->if(row.warmup)done else done.filterNot {it.exerciseId==row.exerciseId}+CompletedAction(row.exerciseId,row.completedAt)},modifiedAt=now)
+        val side=row.side.takeIf {it!="双侧"}
+        val updated=s.copy(exerciseIds=(s.exerciseIds+row.exerciseId).distinct(),completedActions=s.completedActions?.let {done->if(row.warmup)done else done.filterNot {it.exerciseId==row.exerciseId}+CompletedAction(row.exerciseId,row.completedAt,side)},modifiedAt=now)
         return j.copy(sessions=j.sessions.map { if(it.id==s.id)updated else it },sets=j.sets.filterNot { it.id==row.id }+row,restUntil=if(isNew && s.status==SessionStatus.ACTIVE)now+rest*1000L else j.restUntil,deletedIds=j.deletedIds-row.id)
     }
     fun finish(j:Journal,early:Boolean=false,now:Long=System.currentTimeMillis()):Journal {
@@ -31,18 +32,22 @@ object Actions {
         val paused=active.pausedMs+(active.pauseStarted?.let { (now-it).coerceAtLeast(0) }?:0)
         return j.copy(sessions=j.sessions.map { if(it.id==active.id)it.copy(endedAt=now,status=if(early)SessionStatus.EARLY else SessionStatus.COMPLETED,pauseStarted=null,pausedMs=paused,modifiedAt=now) else it },restUntil=null)
     }
-    fun deleteSession(j:Journal,id:String):Journal {
+    fun deleteSession(j:Journal,id:String,now:Long=System.currentTimeMillis()):Journal {
         val ids=j.sets.filter { it.sessionId==id }.map { it.id }.toSet()+id
-        return j.copy(sessions=j.sessions.filterNot { it.id==id },sets=j.sets.filterNot { it.sessionId==id },deletedIds=j.deletedIds+ids,restUntil=if(j.active()?.id==id)null else j.restUntil)
+        val linked=j.sessions.firstOrNull {it.id==id}?.linkedOccurrenceIds().orEmpty().toSet()
+        val remaining=j.sessions.filterNot {it.id==id}
+        val stillLinked=remaining.flatMap {it.linkedOccurrenceIds()}.toSet()
+        return j.copy(sessions=remaining,sets=j.sets.filterNot { it.sessionId==id },restUntil=if(j.active()?.id==id)null else j.restUntil,
+            occurrences=j.occurrences.map {if(it.id in linked && it.id !in stillLinked && it.status==OccurrenceStatus.COMPLETED)it.copy(status=OccurrenceStatus.PLANNED,modifiedAt=now)else it})
     }
-    fun deleteSet(j:Journal,id:String)=j.copy(sets=j.sets.filterNot { it.id==id },deletedIds=j.deletedIds+id)
+    fun deleteSet(j:Journal,id:String)=j.copy(sets=j.sets.filterNot { it.id==id })
     fun togglePause(j:Journal,now:Long=System.currentTimeMillis()):Journal {
         val a=j.active()?:return j
         return j.copy(sessions=j.sessions.map { if(it.id!=a.id)it else if(it.pauseStarted==null)it.copy(pauseStarted=now,modifiedAt=now) else it.copy(pauseStarted=null,pausedMs=it.pausedMs+(now-it.pauseStarted).coerceAtLeast(0),modifiedAt=now) })
     }
     fun restDay(j:Journal,date:LocalDate,now:Long=System.currentTimeMillis()):Journal {
         val day=date.toString()
-        val linked=j.sessions.mapNotNull {it.occurrenceId}.toSet()
+        val linked=j.sessions.flatMap {it.linkedOccurrenceIds()}.toSet()
         val occurrences=j.occurrences.map {o->
             if(o.date==day && o.status==OccurrenceStatus.PLANNED && o.id !in linked)
                 o.copy(status=OccurrenceStatus.CANCELLED,modifiedAt=now)

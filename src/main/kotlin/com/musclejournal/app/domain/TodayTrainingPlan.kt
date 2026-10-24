@@ -12,7 +12,7 @@ object TodayTrainingPlan {
         return Course(name="今日训练",exercises=rows.values.toList())
     }
     fun scheduled(j:Journal,date:LocalDate):Course? {
-        val linked=j.sessions.mapNotNull {it.occurrenceId}.toSet()
+        val linked=j.sessions.flatMap {it.linkedOccurrenceIds()}.toSet()
         val courses=j.occurrences.filter {it.date==date.toString() && it.status==OccurrenceStatus.PLANNED && it.id !in linked}
             .mapNotNull {it.override?:j.courses.firstOrNull {c->c.id==it.courseId && !c.archived}}
         return courses.takeIf {it.isNotEmpty()}?.let(::merge)?.takeIf {it.exercises.isNotEmpty()}

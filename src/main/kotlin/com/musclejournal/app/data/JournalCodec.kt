@@ -12,6 +12,13 @@ object JournalCodec {
     private fun <T> arr(items: Iterable<T>,encode:(T)->Any):JSONArray = JSONArray().apply { items.forEach { put(encode(it)) } }
     private fun <T> list(o:JSONObject,k:String,decode:(JSONObject)->T):List<T> = (o.optJSONArray(k)?:JSONArray()).let { a-> (0 until a.length()).map { decode(a.getJSONObject(it)) } }
     private fun strings(o:JSONObject,k:String):List<String> = (o.optJSONArray(k)?:JSONArray()).let { a->(0 until a.length()).map { a.getString(it) } }
+    private fun optionalLinks(o:JSONObject,k:String):List<String> {
+        if(!o.has(k)||o.isNull(k))return emptyList()
+        val rows=o.getJSONArray(k)
+        return (0 until rows.length()).map {index->
+            val value=rows.get(index);require(value is String && value.isNotBlank()){"完成安排关联必须为有效ID"};value
+        }
+    }
     private fun JSONObject.strictInt(k:String):Int {
         val n=get(k);val d=(n as? Number)?.toDouble() ?: throw IllegalArgumentException("$k 必须为整数")
         require(d.isFinite() && d>=Int.MIN_VALUE && d<=Int.MAX_VALUE && d%1.0==0.0){"$k 必须为有效整数"};return d.toInt()
@@ -31,10 +38,10 @@ object JournalCodec {
         "schema" to SCHEMA,
         "profile" to with(j.profile){obj("adult" to adult,"ageBand" to ageBand,"heightCm" to heightCm,"experience" to experience,"frequency" to recentFrequency,"returning" to returning,"mass" to bodyMassKg,"measuredOn" to measuredOn,"direction" to direction,"days" to arr(days){it},"minutes" to minutes,"equipment" to equipment,"restrictions" to restrictions,"onboarded" to onboardingDone)},
         "settings" to with(j.settings){obj("unit" to unit,"rest" to defaultRest,"weeks" to historyWeeks,"minimum" to minimumSessions,"hours" to referenceHours,"motion" to motion)},
-        "exercises" to arr(j.customExercises){e->obj("id" to e.id,"name" to e.name,"type" to e.type.name,"equipment" to e.equipment,"convention" to e.convention,"primary" to arr(e.primary){it.name},"secondary" to arr(e.secondary){it.name},"evidence" to e.evidence,"conditions" to e.conditions,"reviewed" to e.reviewed,"version" to e.mappingVersion)},
+        "exercises" to arr(j.customExercises){e->obj("id" to e.id,"name" to e.name,"type" to e.type.name,"equipment" to e.equipment,"convention" to e.convention,"primary" to arr(e.primary){it.name},"secondary" to arr(e.secondary){it.name},"evidence" to e.evidence,"conditions" to e.conditions,"reviewed" to e.reviewed,"version" to e.mappingVersion,"requiresSide" to e.requiresSide)},
         "courses" to arr(j.courses,::encodeCourse),
         "occurrences" to arr(j.occurrences){obj("id" to it.id,"course" to it.courseId,"date" to it.date,"status" to it.status.name,"series" to it.seriesId,"override" to it.override?.let(::encodeCourse),"modifiedAt" to it.modifiedAt)},
-        "sessions" to arr(j.sessions){s->obj("id" to s.id,"title" to s.title,"start" to s.startedAt,"zone" to s.zone,"end" to s.endedAt,"status" to s.status.name,"snapshot" to s.snapshot?.let(::encodeCourse),"exercises" to arr(s.exerciseIds){it},"occurrence" to s.occurrenceId,"pause" to s.pauseStarted,"pausedMs" to s.pausedMs,"note" to s.note,"modifiedAt" to s.modifiedAt,"completions" to s.completedActions?.let {arr(it){d->obj("exercise" to d.exerciseId,"at" to d.completedAt)}},"recordedDate" to s.recordedDate)},
+        "sessions" to arr(j.sessions){s->obj("id" to s.id,"title" to s.title,"start" to s.startedAt,"zone" to s.zone,"end" to s.endedAt,"status" to s.status.name,"snapshot" to s.snapshot?.let(::encodeCourse),"exercises" to arr(s.exerciseIds){it},"occurrence" to s.occurrenceId,"pause" to s.pauseStarted,"pausedMs" to s.pausedMs,"note" to s.note,"modifiedAt" to s.modifiedAt,"completions" to s.completedActions?.let {arr(it){d->obj("exercise" to d.exerciseId,"at" to d.completedAt,"side" to d.side)}},"recordedDate" to s.recordedDate,"completedOccurrences" to arr(s.completedOccurrenceIds){it})},
         "sets" to arr(j.sets){s->obj("id" to s.id,"session" to s.sessionId,"exercise" to s.exerciseId,"at" to s.completedAt,"kg" to s.loadKg,"reps" to s.reps,"seconds" to s.seconds,"warmup" to s.warmup,"scale" to s.scale.name,"effort" to s.effort,"side" to s.side,"notes" to s.notes,"modifiedAt" to s.modifiedAt)},
         "checkIns" to arr(j.checkIns){obj("id" to it.id,"muscle" to it.muscle.name,"date" to it.date,"soreness" to it.soreness,"modifiedAt" to it.modifiedAt)},
         "goals" to arr(j.goals){g->obj("id" to g.id,"version" to g.version,"title" to g.title,"start" to g.start,"end" to g.end,"zone" to g.zone,"metric" to g.metric,"target" to g.target,"exercise" to g.exerciseId,"reps" to g.repsRequired,"paused" to g.paused,"confirmed" to g.confirmed,"muscle" to g.muscleId?.name,"source" to g.source)},
@@ -46,12 +53,16 @@ object JournalCodec {
     fun upgrade(text:String):String = encode(decode(text))
     fun decode(text:String):Journal {
         require(text.length<=8_000_000){"数据过大（上限8MB）"}
-        val o=JSONObject(text);val schema=o.strictInt("schema");require(schema in 1..SCHEMA){"不支持的数据版本"}
+        return decodeStored(JSONObject(text))
+    }
+    /** Trusted database records are not limited by the former single-payload file cap. */
+    internal fun decodeStored(o:JSONObject):Journal {
+        val schema=o.strictInt("schema");require(schema in 1..SCHEMA){"不支持的数据版本"}
         val p=o.getJSONObject("profile");val v=o.getJSONObject("settings")
         val j=Journal(profile=Profile(p.getString("adult"),p.getString("experience"),p.strictInt("frequency"),p.getBoolean("returning"),p.nd("mass"),p.ns("measuredOn"),p.getString("direction"),strings(p,"days").map { it.toInt() },p.strictInt("minutes"),p.getString("equipment"),p.getString("restrictions"),p.getBoolean("onboarded"),p.ns("ageBand"),p.nd("heightCm")),settings=Settings(v.getString("unit"),v.strictInt("rest"),v.strictInt("weeks"),v.strictInt("minimum"),v.strictInt("hours"),v.getBoolean("motion")),
-            customExercises=list(o,"exercises"){Exercise(it.getString("id"),it.getString("name"),RecordType.valueOf(it.getString("type")),it.getString("equipment"),it.getString("convention"),strings(it,"primary").map(MuscleId::valueOf),strings(it,"secondary").map(MuscleId::valueOf),it.getString("evidence"),it.getString("conditions"),false,it.strictInt("version"))},
+            customExercises=list(o,"exercises"){Exercise(it.getString("id"),it.getString("name"),RecordType.valueOf(it.getString("type")),it.getString("equipment"),it.getString("convention"),strings(it,"primary").map(MuscleId::valueOf),strings(it,"secondary").map(MuscleId::valueOf),it.getString("evidence"),it.getString("conditions"),false,it.strictInt("version"),it.optBoolean("requiresSide",false))},
             courses=list(o,"courses",::course),occurrences=list(o,"occurrences"){Occurrence(it.getString("id"),it.ns("course"),it.getString("date"),OccurrenceStatus.valueOf(it.getString("status")),it.ns("series"),if(it.isNull("override"))null else course(it.getJSONObject("override")),it.strictLong("modifiedAt"))},
-            sessions=list(o,"sessions"){Session(it.getString("id"),it.getString("title"),it.strictLong("start"),it.getString("zone"),it.nl("end"),SessionStatus.valueOf(it.getString("status")),if(it.isNull("snapshot"))null else course(it.getJSONObject("snapshot")),strings(it,"exercises"),it.ns("occurrence"),it.nl("pause"),it.strictLong("pausedMs"),it.getString("note"),it.strictLong("modifiedAt"),if(it.isNull("completions")||!it.has("completions"))null else list(it,"completions"){d->CompletedAction(d.getString("exercise"),d.strictLong("at"))},it.ns("recordedDate"))},
+            sessions=list(o,"sessions"){Session(it.getString("id"),it.getString("title"),it.strictLong("start"),it.getString("zone"),it.nl("end"),SessionStatus.valueOf(it.getString("status")),if(it.isNull("snapshot"))null else course(it.getJSONObject("snapshot")),strings(it,"exercises"),it.ns("occurrence"),it.nl("pause"),it.strictLong("pausedMs"),it.getString("note"),it.strictLong("modifiedAt"),if(it.isNull("completions")||!it.has("completions"))null else list(it,"completions"){d->CompletedAction(d.getString("exercise"),d.strictLong("at"),d.ns("side"))},it.ns("recordedDate"),optionalLinks(it,"completedOccurrences"))},
             sets=list(o,"sets"){SetEntry(it.getString("id"),it.getString("session"),it.getString("exercise"),it.strictLong("at"),it.nd("kg"),it.ni("reps"),it.ni("seconds"),it.getBoolean("warmup"),EffortScale.valueOf(it.getString("scale")),it.ni("effort"),it.getString("side"),it.getString("notes"),it.strictLong("modifiedAt"))},
             checkIns=list(o,"checkIns"){CheckIn(it.getString("id"),MuscleId.valueOf(it.getString("muscle")),it.getString("date"),it.ni("soreness"),it.strictLong("modifiedAt"))},
             goals=list(o,"goals"){Goal(it.getString("id"),it.strictInt("version"),it.getString("title"),it.getString("start"),it.getString("end"),it.getString("zone"),it.getString("metric"),it.getDouble("target"),it.ns("exercise"),it.strictInt("reps"),it.getBoolean("paused"),it.getBoolean("confirmed"),it.ns("muscle")?.let(MuscleId::valueOf),it.ns("source")?:"用户手设")},

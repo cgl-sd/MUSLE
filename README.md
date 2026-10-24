@@ -2,7 +2,7 @@
 
 养肌宝是一款离线的个人训练记录 Android 应用。它通过固定角度的人体正面/背面图展示训练参与状态，支持动作记录、课程安排、训练历史、个人资料和成就。
 
-- 当前版本：`0.3.0`
+- 当前版本：`0.4.0`
 - 最低系统：Android 8.0（API 26）
 - 应用 ID：`com.musclejournal.app`
 - 数据默认仅保存在本机，不提供账户、云同步或线上数据上传
@@ -11,8 +11,8 @@
 
 - [GitHub 源码仓库](https://github.com/cgl-sd/MUSLE)
 - [最新正式版](https://github.com/cgl-sd/MUSLE/releases/latest)
-- [0.3.0 APK](https://github.com/cgl-sd/MUSLE/releases/download/v0.3.0/MuscleJournal-0.3.0.apk)
-- [0.3.0 SHA-256](https://github.com/cgl-sd/MUSLE/releases/download/v0.3.0/MuscleJournal-0.3.0.apk.sha256)
+- [0.4.0 APK](https://github.com/cgl-sd/MUSLE/releases/download/v0.4.0/MuscleJournal-0.4.0.apk)
+- [0.4.0 SHA-256](https://github.com/cgl-sd/MUSLE/releases/download/v0.4.0/MuscleJournal-0.4.0.apk.sha256)
 
 下载后可以覆盖安装旧版本。更换签名证书会导致 Android 拒绝升级；需要保留数据时必须继续使用同一私钥签名。
 
@@ -31,7 +31,7 @@
 
 ### 首页
 - 固定正面/背面人体与精细肌群轮廓。
-- 正面/背面/肌群三个独立 `56dp` 圆形按钮。
+- 正面/背面/肌群三个独立圆形按钮，可见圆圈 `44dp`、点击范围 `56dp`。
 - 1–10 训练状态参考值，以及与已保存动作同源的肌群着色。
 - 原位肌群标注、解剖介绍和相关动作。
 - 当天真实训练记录与首页训练入口。
@@ -40,17 +40,21 @@
 - 当天课程安排自动预选并置顶。
 - 搜索、分类、加减动作与长按排序。
 - 一次确认原子保存所记录动作，不伪造组数、重量或次数。
+- 单侧动作保存前明确选择左侧或右侧，旧记录缺少侧别字段时继续兼容读取。
+- 对应的当天安排自动标记已完成；下次记录不重复预选，删除对应记录后恢复待训练。
 - 三个只读课程模板与单日课程安排。
 - 训练记录按日、周、月查看，包含动作柱状图与补录。
 
 ### 个人与成就
 - 本地身体资料、训练天数、动作数、本周训练天数。
 - 20 枚基础成就，已获彩色、未获灰色。
-- 动画开关、关于和检查更新。
+- 关于和检查更新。
 
 ## 数据与隐私
 
-- 正式数据库为 SQLite，数据库迁移会保留既有训练事实。
+- 正式数据库为应用私有 SQLite v4，训练、安排、课程等分项存储，只更新变化条目；较大内容按需无损压缩。
+- 旧版数据库通过事务迁移并核对原始记录，缺少 v1/v2 状态主记录时回滚保留原库；记录和安排完成状态同时提交，避免只保存一半。
+- 肌群颜色、训练状态与图表由事实计算，不重复写入数据库。动作事实按场次建立一次索引，避免旧格式组数据反复全表扫描；数据库为记录类型和顺序建立索引。
 - 不自动插入演示训练；debug 自动化使用独立测试数据库。
 - 不提供本地备份、导出、导入或恢复入口。
 - 不申请账户、通讯录或日历权限。
@@ -86,7 +90,10 @@ tmp/build/app/outputs/apk/debug/app-debug.apk
 ```bash
 ./gradlew :app:testDebugUnitTest --offline
 ./gradlew :app:lintDebug --offline
+./gradlew :app:assembleDebugAndroidTest --offline
 ```
+
+测试源码位于 `src/test/kotlin` 和 `src/androidTest/kotlin`，GitHub Actions 会在 `main` 推送和 PR 中运行单测、lint 与仪器测试 APK 编译。
 
 ### Release
 
@@ -97,8 +104,8 @@ tmp/build/app/outputs/apk/debug/app-debug.apk
 脚本会离线构建 Release、执行 `zipalign`、使用本机密钥签名、验证签名/对齐并生成 APK 与 `.sha256`：
 
 ```text
-tmp/release/MuscleJournal-0.3.0.apk
-tmp/release/MuscleJournal-0.3.0.apk.sha256
+tmp/release/MuscleJournal-0.4.0.apk
+tmp/release/MuscleJournal-0.4.0.apk.sha256
 ```
 
 签名环境变量：
@@ -114,7 +121,7 @@ export MUSCLEJOURNAL_KEY_PASSWORD=...
 
 ## 设备运行
 
-本项目专用 AVD 为 `MuscleJournal_API37`。操作前先核验 AVD 名称，序列号可能变化：
+本项目专用 AVD 为 `YangJiBao_API37`。操作前先核验 AVD 名称，序列号可能变化：
 
 ```bash
 ADB="$HOME/Library/Android/sdk/platform-tools/adb"
@@ -133,6 +140,8 @@ ADB="$HOME/Library/Android/sdk/platform-tools/adb"
 app/                              Android app 模块
 src/main/                         原生 Kotlin、资源、Manifest 与资产
 src/scripts/                      构建和发布脚本
+src/test/                         可提交的 JVM 单元测试
+src/androidTest/                  可提交的设备侧测试
 tmp/                              构建、测试、日志与验证证据（忽略）
 docs/                             开发文档与设计资料（忽略）
 README.md                         项目介绍、下载、构建与更新说明

@@ -39,7 +39,8 @@ import java.time.*
 @Composable internal fun SettingsPage(open:(String)->Unit){
     PageTitle("设置")
     UpdateSettingsRow()
-    listOf(Triple("显示设置",Icons.Outlined.Tune,"preferences"),Triple("关于",Icons.Outlined.Info,"about")).forEach {(label,icon,target)->DesignRow(label,icon=icon,click={open(target)});HorizontalDivider(color=Outline)}
+    DesignRow("关于",icon=Icons.Outlined.Info,click={open("about")})
+    HorizontalDivider(color=Outline)
 }
 @Composable internal fun AboutPage(){
     PageTitle("关于")

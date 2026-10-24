@@ -30,7 +30,8 @@ object MedalCatalog {
         MedalDefinition("record-types-2","多样记录","使用2种\n记录类型","recordType",2),
     )
     fun states(j:Journal):List<MedalState>{
-        val actions=j.sessions.associate {it.id to ExerciseProgress.completed(j,it)}
+        val actionIndex=ExerciseProgress.index(j)
+        val actions=j.sessions.associate {it.id to actionIndex.forSession(it)}
         val sessions=j.sessions.filter {it.status!=SessionStatus.ACTIVE && it.endedAt!=null && actions[it.id].orEmpty().isNotEmpty()}.sortedWith(compareBy<Session> {it.endedAt}.thenBy {it.id})
         fun firstDistinct(n:Int,key:(Session)->List<String>):Long? {val seen=mutableSetOf<String>();return sessions.firstOrNull {seen.addAll(key(it));seen.size>=n}?.endedAt}
         return definitions.map {m->

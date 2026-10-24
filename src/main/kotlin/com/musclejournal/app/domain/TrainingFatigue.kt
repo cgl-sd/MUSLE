@@ -71,11 +71,18 @@ object TrainingFatigue {
         val raw = mutableMapOf<Pair<MuscleId, String>, Double>()
 
         val sessions = journal.sessions.associateBy { it.id }
+        val actions = ExerciseProgress.index(journal)
+        val legacySets = journal.sets.asSequence().filter {!it.warmup}.groupBy {it.sessionId}
         journal.sessions
             .asSequence()
             .filter { it.status != SessionStatus.ACTIVE }
             .flatMap { session ->
-                completedContributions(journal, session, now).asSequence()
+                completedContributions(
+                    session,
+                    legacySets[session.id].orEmpty(),
+                    actions.forSession(session),
+                    now,
+                ).asSequence()
             }
             .forEach { contribution ->
                 val exercise = runCatching { journal.exercise(contribution.exerciseId) }.getOrNull()
@@ -131,13 +138,13 @@ object TrainingFatigue {
     )
 
     private fun completedContributions(
-        journal: Journal,
         session: Session,
+        legacyRows: List<SetEntry>,
+        explicitActions: List<CompletedAction>,
         now: Long,
     ): List<SessionContribution> {
-        val explicit = session.completedActions
-        if (explicit != null) {
-            return explicit
+        if (session.completedActions != null) {
+            return explicitActions
                 .filter { it.completedAt <= now }
                 .groupBy { it.exerciseId }
                 .map { (exerciseId, rows) ->
@@ -145,14 +152,14 @@ object TrainingFatigue {
                         sessionId = session.id,
                         exerciseId = exerciseId,
                         completedAt = rows.maxOf { it.completedAt },
-                        side = "双侧",
+                        side = rows.mapNotNull {it.side}.distinct().singleOrNull() ?: "双侧",
                     )
                 }
         }
 
-        return journal.sets
+        return legacyRows
             .asSequence()
-            .filter { it.sessionId == session.id && !it.warmup && it.completedAt <= now }
+            .filter { it.completedAt <= now }
             .flatMap { row ->
                 (if (row.side == "双侧") listOf("左侧", "右侧") else listOf(row.side))
                     .asSequence().map { side -> row.copy(side = side) }

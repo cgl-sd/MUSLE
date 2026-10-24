@@ -55,6 +55,7 @@ import java.time.*
     var backfillDay by rememberSaveable {mutableStateOf(LocalDate.now().toString())}
     var courseFocusDate by rememberSaveable {mutableStateOf<String?>(null)}
     var draftData by rememberSaveable {mutableStateOf<String?>(null)}
+    var draftSides by rememberSaveable {mutableStateOf(emptyMap<String,String>())}
     var scheduleDraft by rememberSaveable {mutableStateOf<String?>(null)}
     var scheduleDay by rememberSaveable {mutableStateOf(LocalDate.now().toString())}
     var scheduleEditing by rememberSaveable {mutableStateOf<String?>(null)}
@@ -82,7 +83,7 @@ import java.time.*
         exerciseId=intent?.getStringExtra("ui_exercise")?:"dumbbell_bench_press"
         val editor=intent?.getStringExtra("ui_form")
         if(target=="picker")detailId=null
-        if(editor in setOf("date","profile","course","muscles","schedule","occurrence","settings","backfill","sessionNote","memoryNote"))form=editor
+        if(editor in setOf("date","profile","course","muscles","schedule","occurrence","backfill","sessionNote","memoryNote"))form=editor
         if(intent?.getBooleanExtra("ui_memory",false)==true)previewMemory=j.achievements.firstOrNull()
         if(intent?.getBooleanExtra("ui_onboarding",false)==true)onboardingPreview=true
     }}
@@ -102,12 +103,13 @@ import java.time.*
         planReturnPage=origin;pickerReturnPage=origin;detailId=null;selectedName=null
         if(draftData==null || draftDate!=LocalDate.now().toString()){
             val active=j.active()
+            draftSides=active?.completedActions.orEmpty().mapNotNull {action->action.side?.let {action.exerciseId to it}}.toMap()
             storePlan(if(active!=null)Course(name=active.title,exercises=active.exerciseIds.map {CourseExercise(it)})else TodayTrainingPlan.scheduled(j,LocalDate.now())?:Course(name="今日训练",exercises=emptyList()))
         }
         page="record"
     }
     fun start(course:Course?=null,occurrence:String?=null){
-        if(course!=null)storePlan(course)
+        if(course!=null){storePlan(course);draftSides=emptyMap()}
         prepareTraining(page)
     }
     var exportAchievement by remember {mutableStateOf<Achievement?>(null)}
@@ -123,9 +125,8 @@ import java.time.*
     if(onboardingPreview)Onboarding({onboardingPreview=false}){_->onboardingPreview=false}
     // Motion off removes the tap ripple and the celebration animation; the content itself is unchanged.
     CompositionLocalProvider(LocalRippleConfiguration provides if(j.settings.motion) LocalRippleConfiguration.current else null){
-    Scaffold(containerColor=Ink,bottomBar={if(form==null)Column {
-        
-        val dockPage=when(page){"body","muscles"->"首页";"courses"->"课程";"history"->"记录";"me"->"个人";"detail","trend"->"记录";"memories","settings","about"->"个人";else->""}
+    Scaffold(containerColor=Ink,bottomBar={if(form==null && page in setOf("body","courses","history","me"))Column {
+        val dockPage=when(page){"body"->"首页";"courses"->"课程";"history"->"记录";else->"个人"}
         val training=j.active()!=null || currentDraft?.exercises?.isNotEmpty()==true
         if(page=="body")TrainingPill(training,repo.ready&&!busy,{prepareTraining("body")})
         BottomNav(dockPage,{selectedName=null;page="body"},{selectedName=null;page="courses"},{selectedName=null;page="history"},{page="me"})
@@ -142,19 +143,30 @@ import java.time.*
                 when(page){
                     "scheduleActions"->{
                         val plan=currentSchedulePlan?:Course(name="训练安排",exercises=emptyList())
+                        val saveKey=remember(page,scheduleDraft){"schedule-save:${newId()}"}
                         TrainingRecordPage(j,plan.exercises.map {it.exerciseId},busy,{ids->
                             val previous=plan.exercises.associateBy {it.exerciseId}
                             scheduleDraft=JournalCodec.encode(Journal(customExercises=j.customExercises,courses=listOf(plan.copy(exercises=ids.map {previous[it]?:CourseExercise(it)}))))
-                        },{repo.change(after={scheduleDraft=null;scheduleEditing=null;page="courses";android.widget.Toast.makeText(context,"已添加训练",android.widget.Toast.LENGTH_SHORT).show()}){
+                        },{repo.changeOnce(saveKey,after={scheduleDraft=null;scheduleEditing=null;page="courses";android.widget.Toast.makeText(context,"已添加训练",android.widget.Toast.LENGTH_SHORT).show()}){
                             TrainingSchedule.save(it,LocalDate.parse(scheduleDay),plan.exercises.map {it.exerciseId},scheduleEditing)
-                        }},title="添加训练",saveLabel="确认添加")
+                        }},title="添加训练",saveLabel="确认添加",enforceSides=false)
                     }
                     "record","picker","active","trainingPlan","trainingReview"->{
                         val plan=currentDraft?:j.active()?.let {a->Course(name=a.title,exercises=a.exerciseIds.map {CourseExercise(it)})}?:TodayTrainingPlan.scheduled(j,LocalDate.now())?:Course(name="今日训练",exercises=emptyList())
+                        val saveKey=remember(page,draftData){"record-save:${newId()}"}
                         TrainingRecordPage(j,plan.exercises.map {it.exerciseId},busy,{ids->
                             val byId=plan.exercises.associateBy {it.exerciseId}
                             storePlan(plan.copy(exercises=ids.map {byId[it]?:CourseExercise(it)}))
-                        },{repo.change(after={draftData=null;draftDate=null;page="body";android.widget.Toast.makeText(context,"训练记录已保存",android.widget.Toast.LENGTH_SHORT).show()}){TrainingRecord.save(it,plan.exercises.map {it.exerciseId})}})
+                            draftSides=draftSides.filterKeys {it in ids}
+                        },
+                            selectedSides=draftSides,
+                            onSideChange={id,side->draftSides=if(side==null)draftSides-id else draftSides+(id to side)},
+                            save={
+                                repo.changeOnce(saveKey,after={draftData=null;draftDate=null;draftSides=emptyMap();page="body";android.widget.Toast.makeText(context,"训练记录已保存",android.widget.Toast.LENGTH_SHORT).show()}){
+                                    TrainingRecord.saveSelections(it,plan.exercises.map {row->TrainingRecord.Selection(row.exerciseId,draftSides[row.exerciseId])})
+                                }
+                            },
+                        )
                     }
                     "courses"->CoursesScreen(j,busy,{c->start(c)},{c->editId=c?.id;form="course"},{c->commit {it.copy(courses=it.courses+c.copy(id=newId(),name=c.name+" 副本",archived=false))}},{c->commit {it.copy(courses=it.courses.map {v->if(v.id==c.id)v.copy(archived=!v.archived) else v})}},{c->editId=c.id;form="course"},{o->val c=o.override?:j.courses.firstOrNull {it.id==o.courseId};if(c!=null)start(c,o.id)},{o,status->commit {if(status==OccurrenceStatus.CANCELLED)TrainingSchedule.cancel(it,o.id)else it.copy(occurrences=it.occurrences.map {v->if(v.id==o.id)v.copy(status=status) else v})}},{o->prepareSchedule(LocalDate.parse(o.date),o)},{day->prepareSchedule(day)},courseFocusDate,{courseFocusDate=null})
                     "history"->HistoryScreen(j,{openRecord(it)},{day->backfillDay=day.toString();form="backfill"})
@@ -162,7 +174,7 @@ import java.time.*
                     "trend"->TrendScreen(j,exerciseId)
                     "muscles"->MusclesPage(j,date,range){m->annotations=true;selectedName=m.name;side="双侧";bodyView=BodyRegions.viewFor(m).name;page="body"}
                     "me"->PersonalHub(j,{target->page=target},{form="profile"})
-                    "settings"->SettingsPage {target->if(target=="preferences")form="settings"else page=target}
+                    "settings"->SettingsPage {page=it}
                     "about"->AboutPage()
                     "memories"->MemoriesPage(j)
                 }
@@ -189,9 +201,8 @@ import java.time.*
         "muscles"->Editor("肌群列表",busy,{form=null},{form=null},"关闭"){var query by remember {mutableStateOf("")};Input("搜索肌群",query,{query=it},trackChange=false);MuscleId.entries.filter {it.displayName.contains(query)}.forEach {m->DesignRow(m.displayName,click={annotations=true;selectedName=m.name;side="双侧";bodyView=BodyRegions.viewFor(m).name;page="body";form=null},leading={AnatomyThumbnail(m,Modifier.size(76.dp,64.dp))});HorizontalDivider(color=Outline)}}
         "schedule"->ScheduleEditor(j,editId,busy,{form=null}){c,d,days,end->save {Actions.schedule(it,c,d,days,end)}}
         "occurrence"->j.occurrences.firstOrNull {it.id==editId}?.let {o->OccurrenceEditor(j,o,busy,{form=null}){updated->save {it.copy(occurrences=it.occurrences.map {v->if(v.id==o.id)updated else v})}}}
-        "settings"->SettingsEditor(j.settings,busy,{form=null}){s->save {it.copy(settings=s)}}
         "backfill"->BackfillEditor(j,LocalDate.parse(backfillDay),busy,{form=null}){s->val task={repo.change(after={form=null;page="history";android.widget.Toast.makeText(context,"训练记录已保存",android.widget.Toast.LENGTH_SHORT).show()}){it.copy(sessions=it.sessions+s)}};retrySave=task;task()}
-        "sessionNote"->if(session!=null){var note by remember {mutableStateOf(session.note)};Editor("训练备注",busy,{form=null},{save {it.copy(sessions=it.sessions.map {s->if(s.id==session.id)s.copy(note=note) else s})}},"保存备注"){Note(session.title+" · "+session.date());Input("",note,{note=it},lines=14);Text("${note.length}/300",color=Muted)}}
+        "sessionNote"->if(session!=null){var note by remember {mutableStateOf(session.note)};Editor("训练备注",busy,{form=null},{require(note.length<=MAX_SESSION_NOTE_LENGTH){"备注过长"};save {it.copy(sessions=it.sessions.map {s->if(s.id==session.id)s.copy(note=note) else s})}},"保存备注"){Note(session.title+" · "+session.date());Input("",note,{note=it},lines=14,maxLength=MAX_SESSION_NOTE_LENGTH);Text("${note.length}/${MAX_SESSION_NOTE_LENGTH}",color=Muted)}}
         "memoryNote"->j.achievements.firstOrNull {it.key==editId}?.let {memory->var note by remember {mutableStateOf(memory.note)};Editor("纪念备注",busy,{form=null},{save {it.copy(achievements=it.achievements.map {x->if(x.key==memory.key)x.copy(note=note) else x})}}){Input("备注",note,{note=it},lines=3)}}
     }
     previewMemory?.let {a->MemoryPreview(j,a,{previewMemory=null}){exportAchievement=a;memoryLauncher.launch("muscle-journal-memory-${a.awardedAt}.png")}}

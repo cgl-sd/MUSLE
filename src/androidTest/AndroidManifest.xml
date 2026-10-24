@@ -1,0 +1,3 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <instrumentation android:name="com.musclejournal.app.UiInputInstrumentation" android:targetPackage="com.musclejournal.app.test" android:functionalTest="true" />
+</manifest>

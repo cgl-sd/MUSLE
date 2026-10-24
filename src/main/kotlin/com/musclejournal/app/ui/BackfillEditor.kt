@@ -20,20 +20,22 @@ import java.time.LocalDate
     var date by rememberSaveable(stateSaver=LocalDateSaver){mutableStateOf(startDate)}
     var title by rememberSaveable {mutableStateOf(BackfillRecord.DEFAULT_TITLE)}
     var selected by rememberSaveable {mutableStateOf(emptyList<String>())}
+    var selectedSides by rememberSaveable {mutableStateOf(emptyMap<String,String>())}
     var pickerIds by rememberSaveable {mutableStateOf(emptyList<String>())}
+    var pickerSides by rememberSaveable {mutableStateOf(emptyMap<String,String>())}
     var choosing by rememberSaveable {mutableStateOf(false)}
     var askExit by remember {mutableStateOf(false)}
     var error by remember {mutableStateOf<String?>(null)}
     fun persist(){
         if(busy)return
         error=null;askExit=false
-        runCatching {save(BackfillRecord.create(j,date,title,selected))}.onFailure {error=it.message?:"请检查填写内容"}
+        runCatching {save(BackfillRecord.create(j,date,title,selected,sides=selectedSides))}.onFailure {error=it.message?:"请检查填写内容"}
     }
     fun leave(){
         if(busy)return
         when{
             choosing->choosing=false
-            BackfillRecord.hasChanges(startDate,date,title,selected)->askExit=true
+            BackfillRecord.hasChanges(startDate,date,title,selected,selectedSides)->askExit=true
             else->close()
         }
     }
@@ -42,20 +44,29 @@ import java.time.LocalDate
             Column(Modifier.padding(horizontal=20.dp)){
                 if(choosing){
                     CompositionLocalProvider(LocalPageBack provides {choosing=false}){
-                        TrainingRecordPage(j,pickerIds,busy,{pickerIds=it},{selected=pickerIds;choosing=false},title="添加锻炼项目",saveLabel="确认添加")
+                        TrainingRecordPage(j,pickerIds,busy,{pickerIds=it;pickerSides=pickerSides.filterKeys {id->id in it}},{selected=pickerIds;selectedSides=pickerSides.filterKeys {it in pickerIds};choosing=false},selectedSides=pickerSides,onSideChange={id,side->pickerSides=if(side==null)pickerSides-id else pickerSides+(id to side!!)},title="添加锻炼项目",saveLabel="确认添加")
                     }
                 }else{
                     PageTitle("补录训练",back={leave()})
                     Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(vertical=14.dp),verticalArrangement=Arrangement.spacedBy(16.dp)){
-                        Input("训练名称",title,{title=it})
+                        Input("训练名称",title,{title=it},maxLength=MAX_SESSION_TITLE_LENGTH)
                         DateField("日期",date){date=it}
                         Text("锻炼项目")
                         Column(verticalArrangement=Arrangement.spacedBy(8.dp)){
                             selected.forEach {id->val exercise=j.exercise(id)
-                                TrainingCard{TrainingCardRow(exercise.name,exercise,trailing={TapIcon(Icons.Outlined.RemoveCircleOutline,"移除${exercise.name}"){selected=selected-id}})}
+                                TrainingCard{
+                                    TrainingCardRow(exercise.name,exercise,trailing={TapIcon(Icons.Outlined.RemoveCircleOutline,"移除${exercise.name}"){selected=selected-id;selectedSides=selectedSides-id}})
+                                    if(exercise.requiresSide){
+                                        Row(Modifier.padding(start=12.dp,bottom=8.dp),horizontalArrangement=Arrangement.spacedBy(8.dp)){
+                                            listOf("左侧","右侧").forEach {side->
+                                                FilterChip(selected=selectedSides[id]==side,onClick={selectedSides=selectedSides+(id to side)},label={Text(side)},enabled=!busy)
+                                            }
+                                        }
+                                    }
+                                }
                             }
                         }
-                        Secondary("添加锻炼项目",!busy){pickerIds=selected;choosing=true}
+                        Secondary("添加锻炼项目",!busy){pickerIds=selected;pickerSides=selectedSides;choosing=true}
                         error?.let {Text(it,color=Accent)}
                     }
                     Box(Modifier.padding(vertical=14.dp)){Action(if(busy)"保存中…"else "保存训练",!busy && selected.isNotEmpty()){persist()}}

@@ -14,14 +14,22 @@ android {
         applicationId = "com.musclejournal.app"
         minSdk = 26
         targetSdk = 37
-        versionCode = 3
-        versionName = "0.3.0"
+        versionCode = 4
+        versionName = "0.4.0"
         testInstrumentationRunner = "com.musclejournal.app.JournalAcceptanceInstrumentation"
     }
 
     buildTypes {
         getByName("debug") { buildConfigField("boolean", "TEST_TOOLS", "true") }
-        getByName("release") { buildConfigField("boolean", "TEST_TOOLS", "false") }
+        getByName("release") {
+            buildConfigField("boolean", "TEST_TOOLS", "false")
+            isMinifyEnabled = true
+            isShrinkResources = true
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro",
+            )
+        }
     }
 
     buildFeatures {
@@ -47,12 +55,12 @@ android {
         }
         named("test") {
             kotlin.directories.clear()
-            kotlin.directories += rootProject.file("tmp/tests/unit").absolutePath
+            kotlin.directories += rootProject.file("src/test/kotlin").absolutePath
             java.directories.clear()
         }
         named("androidTest") {
             kotlin.directories.clear()
-            kotlin.directories += rootProject.file("tmp/tests/androidTest").absolutePath
+            kotlin.directories += rootProject.file("src/androidTest/kotlin").absolutePath
             java.directories.clear()
         }
     }
