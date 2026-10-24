@@ -1,157 +1,65 @@
 # 养肌宝
 
-养肌宝是一款离线的个人训练记录 Android 应用。它通过固定角度的人体正面/背面图展示训练参与状态，支持动作记录、课程安排、训练历史、个人资料和成就。
+养肌宝是面向个人的 Android 训练记录应用。通过正面与背面人体探索肌群，记录做过的动作、安排课程，回顾自己的训练历程。
 
-- 当前版本：`0.4.0`
-- 最低系统：Android 8.0（API 26）
-- 应用 ID：`com.musclejournal.app`
-- 数据默认仅保存在本机，不提供账户、云同步或线上数据上传
+- [下载 Android 安装包](https://github.com/cgl-sd/MUSLE/releases/download/v0.4.0/MuscleJournal-0.4.0.apk)
+- [查看最新版本](https://github.com/cgl-sd/MUSLE/releases/latest)
 
-## 下载
+支持 Android 8.0 及以上。离线使用，无需注册，训练数据保存在本机。
 
-- [GitHub 源码仓库](https://github.com/cgl-sd/MUSLE)
-- [最新正式版](https://github.com/cgl-sd/MUSLE/releases/latest)
-- [0.4.0 APK](https://github.com/cgl-sd/MUSLE/releases/download/v0.4.0/MuscleJournal-0.4.0.apk)
-- [0.4.0 SHA-256](https://github.com/cgl-sd/MUSLE/releases/download/v0.4.0/MuscleJournal-0.4.0.apk.sha256)
+![养肌宝：让每次训练都有迹可循](artwork/readme/cover.png)
 
-下载后可以覆盖安装旧版本。更换签名证书会导致 Android 拒绝升级；需要保留数据时必须继续使用同一私钥签名。
+## 功能
 
-## 更新
+**身体探索**：切换人体正面与背面，点选肌群查看介绍和相关动作；肌群颜色与训练状态随已保存的训练记录变化。
 
-进入“个人 → 设置 → 检查更新”即可读取本仓库的最新正式 Release。发现新版本后由用户确认下载，应用会：
+**动作记录**：搜索、分类选择动作，支持增减与长按排序，一次保存本次记录；单侧动作可选择左侧或右侧。
 
-1. 只接受 `cgl-sd/MUSLE` 正式 Release 中的固定 APK 和 SHA-256 文件。
-2. 校验 APK 大小、SHA-256、包名、版本名、递增的 versionCode 和当前安装签名。
-3. 通过系统 `DownloadManager` 下载到应用私有外部目录。
-4. 校验完成后调用系统安装器，由用户再次确认安装。
+**课程安排**：提供上肢力量、下肢力量和全身基础模板，支持调整动作与安排日期；当天安排自动预选，完成记录后同步安排状态。
 
-应用不会静默安装、不会绕过 Android 安装确认，也不会通过更新清空训练数据。检查更新需要设备能够访问 GitHub API 与 Release 文件托管域名。
+**训练历史**：按日、周、月查看动作记录与图表，支持补录过去的训练。
 
-## 当前功能
+**个人与成就**：保存身体资料，查看训练天数与 20 枚成就，回顾每一份积累。
 
-### 首页
-- 固定正面/背面人体与精细肌群轮廓。
-- 正面/背面/肌群三个独立圆形按钮，可见圆圈 `44dp`、点击范围 `56dp`。
-- 1–10 训练状态参考值，以及与已保存动作同源的肌群着色。
-- 原位肌群标注、解剖介绍和相关动作。
-- 当天真实训练记录与首页训练入口。
+[![养肌宝界面预览：身体探索、动作记录与课程安排](artwork/readme/screens.png)](artwork/readme/screens.png)
 
-### 训练与课程
-- 当天课程安排自动预选并置顶。
-- 搜索、分类、加减动作与长按排序。
-- 一次确认原子保存所记录动作，不伪造组数、重量或次数。
-- 单侧动作保存前明确选择左侧或右侧，旧记录缺少侧别字段时继续兼容读取。
-- 对应的当天安排自动标记已完成；下次记录不重复预选，删除对应记录后恢复待训练。
-- 三个只读课程模板与单日课程安排。
-- 训练记录按日、周、月查看，包含动作柱状图与补录。
+> Android 开发版界面；安排内容来自隔离测试数据。
 
-### 个人与成就
-- 本地身体资料、训练天数、动作数、本周训练天数。
-- 20 枚基础成就，已获彩色、未获灰色。
-- 关于和检查更新。
+## 下载与安装
+
+1. 下载 [MuscleJournal-0.4.0.apk](https://github.com/cgl-sd/MUSLE/releases/download/v0.4.0/MuscleJournal-0.4.0.apk) 和对应的 [SHA-256 校验文件](https://github.com/cgl-sd/MUSLE/releases/download/v0.4.0/MuscleJournal-0.4.0.apk.sha256)。
+2. 按 Android 提示允许当前来源安装，并确认安装。应用尚未上架应用商店。
+3. 旧版可直接覆盖安装，保留本地记录；包名和签名证书必须一致。
+
+“个人 → 设置 → 检查更新”读取本仓库的 GitHub 正式 Release。经用户确认后下载，核验大小、SHA-256、包名、版本与签名，再交由 Android 系统安装器确认。
 
 ## 数据与隐私
 
-- 正式数据库为应用私有 SQLite v4，训练、安排、课程等分项存储，只更新变化条目；较大内容按需无损压缩。
-- 旧版数据库通过事务迁移并核对原始记录，缺少 v1/v2 状态主记录时回滚保留原库；记录和安排完成状态同时提交，避免只保存一半。
-- 肌群颜色、训练状态与图表由事实计算，不重复写入数据库。动作事实按场次建立一次索引，避免旧格式组数据反复全表扫描；数据库为记录类型和顺序建立索引。
-- 不自动插入演示训练；debug 自动化使用独立测试数据库。
-- 不提供本地备份、导出、导入或恢复入口。
-- 不申请账户、通讯录或日历权限。
-- 更新状态保存在 `no-backup` 目录，避免跨设备恢复出无效下载记录。
+训练记录、课程安排和身体资料保存在应用私有 SQLite 数据库，仅更新变化条目，较大内容按需无损压缩。旧记录保留兼容，保存训练与同步安排使用同一事务。
 
-## 开发环境
+应用不提供账户、云同步、数据上传或本地备份功能。卸载应用或清除应用数据会丢失本地记录，请保留应用数据并使用覆盖安装升级。仅检查更新与下载新版需要联网。
 
-项目按当前 Mac 的已有工具链配置：
+人体着色与 1–10 训练状态是依据已保存动作和时间计算的产品参考，不是生理疲劳测量或医学结论。
 
-- Android Studio `2026.1.3`
-- Studio JBR Java `25.0.2`
-- Android SDK API `37`，Build Tools `36.0.0`
-- Gradle Wrapper `9.5.0`
-- AGP `9.3.2`
-- Kotlin/Compose compiler `2.2.10`
+## 资源
 
-## 构建
+人体、头像与启动图标为本项目生成的插画素材。肌群介绍参考 [OpenStax Anatomy and Physiology 2e](https://openstax.org/details/books/anatomy-and-physiology-2e)；插画用于身体探索，不作为临床解剖图或实测肌肉激活数据。
 
-### Debug
+## 开发、构建与目录
+
+原生 Kotlin + Jetpack Compose，最低 API 26，编译 API 37。使用 Android Studio 打开项目；命令行构建与检查：
 
 ```bash
-./src/scripts/build-debug.sh
+./src/scripts/build-debug.sh --offline
+./gradlew :app:testDebugUnitTest :app:lintDebug :app:assembleDebugAndroidTest --offline
 ```
 
-输出：
+首次构建需安装相应 Android SDK 并获取依赖，再使用离线模式。Debug APK 输出到 `tmp/build/app/outputs/apk/debug/app-debug.apk`。
 
-```text
-tmp/build/app/outputs/apk/debug/app-debug.apk
-```
+- `src/main/`：Kotlin 源码、Manifest、资源与插画。
+- `src/test/`、`src/androidTest/`：单元测试与设备端检查。
+- `src/scripts/`：构建与发布脚本；`build-release.sh` 生成签名 APK 与校验文件。
+- `app/`、`gradle/`：模块配置与 Gradle Wrapper。
+- `artwork/readme/`：宣传封面与界面预览。
 
-### 单元测试与静态检查
-
-```bash
-./gradlew :app:testDebugUnitTest --offline
-./gradlew :app:lintDebug --offline
-./gradlew :app:assembleDebugAndroidTest --offline
-```
-
-测试源码位于 `src/test/kotlin` 和 `src/androidTest/kotlin`，GitHub Actions 会在 `main` 推送和 PR 中运行单测、lint 与仪器测试 APK 编译。
-
-### Release
-
-```bash
-./src/scripts/build-release.sh
-```
-
-脚本会离线构建 Release、执行 `zipalign`、使用本机密钥签名、验证签名/对齐并生成 APK 与 `.sha256`：
-
-```text
-tmp/release/MuscleJournal-0.4.0.apk
-tmp/release/MuscleJournal-0.4.0.apk.sha256
-```
-
-签名环境变量：
-
-```bash
-export MUSCLEJOURNAL_KEYSTORE=/path/to/private.keystore
-export MUSCLEJOURNAL_STORE_PASSWORD=...
-export MUSCLEJOURNAL_KEY_ALIAS=...
-export MUSCLEJOURNAL_KEY_PASSWORD=...
-```
-
-未设置时脚本使用本机 `~/.android/debug.keystore`，用于兼容当前个人侧载安装。该证书不属于商店发布身份；后续更新必须保留同一私钥。密钥文件和密码不会提交到仓库。
-
-## 设备运行
-
-本项目专用 AVD 为 `YangJiBao_API37`。操作前先核验 AVD 名称，序列号可能变化：
-
-```bash
-ADB="$HOME/Library/Android/sdk/platform-tools/adb"
-"$ADB" devices -l
-"$ADB" -s <serial> emu avd name
-"$ADB" -s <serial> install -r tmp/build/app/outputs/apk/debug/app-debug.apk
-"$ADB" -s <serial> shell am force-stop com.musclejournal.app
-"$ADB" -s <serial> shell am start -W -n com.musclejournal.app/.MainActivity
-```
-
-不要使用相邻 PitPitch 项目的模拟器，也不要通过卸载或清空数据规避安装问题。
-
-## 目录
-
-```text
-app/                              Android app 模块
-src/main/                         原生 Kotlin、资源、Manifest 与资产
-src/scripts/                      构建和发布脚本
-src/test/                         可提交的 JVM 单元测试
-src/androidTest/                  可提交的设备侧测试
-tmp/                              构建、测试、日志与验证证据（忽略）
-docs/                             开发文档与设计资料（忽略）
-README.md                         项目介绍、下载、构建与更新说明
-```
-
-公开仓库不包含大型设计资料。完整的本机开发计划、验收记录和资产来源位于 `docs/DEVELOPMENT_PLAN.md`，该目录按项目规则保留在本地。
-
-## 已知限制
-
-- 仅处理 GitHub 正式 Release，不读取预发布或草稿。
-- 更新需要可连接 GitHub 的网络；失败不会删除已安装应用或用户数据。
-- 当前没有云端账户、跨设备同步或远程恢复。
-- API 26 兼容结论沿用历史约束，最近验收在 API 37 专用模拟器完成。
+发布签名通过本机环境配置，私钥和密码不入库。设备检查使用专用 `YangJiBao_API37` 模拟器；最近验证在 API 37 完成，API 26 尚未进行本轮设备复验。
