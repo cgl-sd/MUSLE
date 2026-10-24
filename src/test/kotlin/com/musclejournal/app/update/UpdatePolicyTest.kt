@@ -11,7 +11,7 @@ class UpdatePolicyTest {
     private val apkName = "MuscleJournal-0.3.0.apk"
     private val apk = ReleaseAsset(
         apkName,
-        "https://github.com/cgl-sd/MUSLE/releases/download/$tag/$apkName",
+        "https://github.com/cgl-sd/yangjibao/releases/download/$tag/$apkName",
         4_000,
     )
     private val checksumAsset = ReleaseAsset("$apkName.sha256", "${apk.url}.sha256", 90)
@@ -67,7 +67,8 @@ class UpdatePolicyTest {
             apk.url.replace("https:", "http:"),
             apk.url.replace("github.com", "github.com.evil.test"),
             apk.url.replace("cgl-sd", "someone-else"),
-            apk.url.replace("MUSLE/releases", "Other/releases"),
+            apk.url.replace("yangjibao/releases", "Other/releases"),
+            apk.url.replace("yangjibao/releases", "MUSLE/releases"),
             apk.url.replace("v0.3.0", "v0.3.1"),
             apk.url.replace("github.com/", "user@github.com/"),
             apk.url.replace("github.com/", "github.com:443/"),

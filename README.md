@@ -2,7 +2,7 @@
 
 养肌宝是面向个人的 Android 训练记录应用。记录做过的动作、安排课程，回顾自己的训练历程。
 
-- [下载 Android 安装包](https://github.com/cgl-sd/MUSLE/releases/download/v0.4.0/MuscleJournal-0.4.0.apk)
+- [下载 Android 安装包](https://github.com/cgl-sd/yangjibao/releases/download/v0.4.0/MuscleJournal-0.4.0.apk)
 
 支持 Android 8.0 及以上。
 

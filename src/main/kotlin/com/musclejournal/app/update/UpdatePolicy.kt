@@ -3,7 +3,7 @@ package com.musclejournal.app.update
 import java.net.URI
 import java.security.MessageDigest
 
-internal const val UPDATE_REPOSITORY = "cgl-sd/MUSLE"
+internal const val UPDATE_REPOSITORY = "cgl-sd/yangjibao"
 internal const val LATEST_RELEASE_URL = "https://api.github.com/repos/$UPDATE_REPOSITORY/releases/latest"
 internal const val MAX_APK_BYTES = 250L * 1024 * 1024
 
